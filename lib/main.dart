@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'login/login.dart'; // Import the login file containing screens
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
+import 'screens/auth/login_screen.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -10,45 +12,18 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Auth App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: Colors.grey[50],
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.blue[100]!, width: 1),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.blue[100]!, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.blue, width: 2),
-          ),
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Student Portal',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          ),
-        ),
+        home: const LoginScreen(),
+        debugShowCheckedModeBanner: false,
       ),
-      home: SplashScreen(), // Start with SplashScreen from login.dart
-      routes: {
-        '/login1': (context) => LoginScreen1(),
-        '/signup': (context) => SignUpScreen(),
-        '/verification': (context) => VerificationScreen(),
-      },
     );
   }
 }
