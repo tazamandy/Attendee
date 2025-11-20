@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'providers/auth_provider.dart';
-import 'screens/auth/login_screen.dart';
+import 'screen/login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,18 +10,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-      ],
-      child: MaterialApp(
-        title: 'Student Portal',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-        ),
-        home: const LoginScreen(),
-        debugShowCheckedModeBanner: false,
+    return MaterialApp(
+      title: 'Attendee App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
       ),
+      home: const LoginScreen(),
+      debugShowCheckedModeBanner: false,
     );
   }
 }
