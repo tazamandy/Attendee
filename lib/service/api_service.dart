@@ -1,71 +1,71 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://127.0.0.1:9090';
+  late final String baseUrl;
 
-  // LOGIN
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  ApiService() {
+    // Get base URL safely with fallback
+    baseUrl = _getBaseUrl();
+  }
+
+  String _getBaseUrl() {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email, 'password': password}),
-      );
-
-      if (response.statusCode == 200) {
-        return {'success': true, 'data': json.decode(response.body)};
-      } else {
-        return {'success': false, 'message': 'Login failed'};
-      }
+      return dotenv.env['API_BASE_URL'] ?? 'http://localhost:9090';
     } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      print('Warning: Could not get API_BASE_URL from env: $e');
+      return 'http://localhost:9090';
     }
   }
 
-  // REGISTER
-  static Future<Map<String, dynamic>> register(
-    String email, String password, String username, String firstName, String lastName,
-  ) async {
+  Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
     try {
+      print('API Call: $baseUrl$endpoint');
+      print('Data: $data');
+
       final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/register'),
+        Uri.parse('$baseUrl$endpoint'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'email': email,
-          'password': password,
-          'username': username,
-          'first_name': firstName,
-          'last_name': lastName,
-        }),
+        body: json.encode(data),
       );
 
-      if (response.statusCode == 201) {
-        return {'success': true, 'data': json.decode(response.body)};
-      } else {
-        return {'success': false, 'message': 'Registration failed'};
-      }
+      print('Response status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      return _handleResponse(response);
     } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      print('API call error: $e');
+      rethrow;
     }
   }
 
-  // FORGOT PASSWORD
-  static Future<Map<String, dynamic>> forgotPassword(String email) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/auth/forgot-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'email': email}),
-      );
+  Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+    );
+    return _handleResponse(response);
+  }
 
-      if (response.statusCode == 200) {
-        return {'success': true, 'message': 'Reset email sent'};
-      } else {
-        return {'success': false, 'message': 'Failed to send email'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+  Future<dynamic> put(
+    String endpoint,
+    Map<String, dynamic> data, {
+    Map<String, String>? headers,
+  }) async {
+    final response = await http.put(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers ?? {'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+    return _handleResponse(response);
+  }
+
+  dynamic _handleResponse(http.Response response) {
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('HTTP ${response.statusCode}: ${response.body}');
     }
   }
 }
