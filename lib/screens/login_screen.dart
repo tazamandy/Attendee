@@ -59,45 +59,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLogo(Size size) {
-    return Column(
-      children: [
-        Container(
-          width: size.width * 0.40,
-          height: size.width * 0.40,
-          decoration: BoxDecoration(
-            color: const Color(0xFF667EEA),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 15,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: const Center(
-            child: Text(
-              'LOGO',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+  return Column(
+    children: [
+      Image.asset(
+        'assets/images/logo1.png',
+        fit: BoxFit.contain,
+        width: size.width * 0.40,
+        height: size.width * 0.40,
+      ),
+      SizedBox(height: size.height * 0.02),
+      Text(
+        'Attendify',
+        style: TextStyle(
+          fontSize: size.width * 0.07,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
         ),
-        SizedBox(height: size.height * 0.02),
-        Text(
-          'Attendify',
-          style: TextStyle(
-            fontSize: size.width * 0.07,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
   Widget _buildLoginCard(AuthProvider authProvider, Size size) {
     return Container(

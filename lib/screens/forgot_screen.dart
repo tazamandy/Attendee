@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'verify_code_screen.dart'; 
+import 'verify_email_screen.dart'; 
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -231,7 +231,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => VerifyCodeScreen(
+              builder: (context) => VerifyEmailScreen(
                 studentId: _studentIdController.text.trim(),
                 email: _userEmail ?? 'user@example.com',
                 isPasswordReset: true,

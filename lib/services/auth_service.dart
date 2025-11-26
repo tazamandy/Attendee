@@ -4,19 +4,25 @@ import '../models/auth_model.dart';
 class AuthService {
   final ApiService _apiService = ApiService();
 
-  Future<Map<String, dynamic>> login(String studentId, String password) async {
+  Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
     try {
+      print('🌐 AUTH SERVICE - Sending registration request');
+      print('📤 Data being sent: $userData');
+
       final response = await _apiService.post(
-        '/login',
-        {'student_id': studentId, 'password': password}, // PALITAN DITO
+        '/register',
+        userData,
       );
+
+      print('📥 Raw API Response: $response');
 
       return {
         'success': true,
-        'message': response['message'],
-        'user': User.fromJson(response),
+        'message': response['message'] ?? 'Registration successful',
+        'data': response,
       };
     } catch (e) {
+      print('💥 AUTH SERVICE - Registration error: $e');
       return {
         'success': false,
         'message': e.toString(),
@@ -24,19 +30,32 @@ class AuthService {
     }
   }
 
-  Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
+  Future<Map<String, dynamic>> login(String studentId, String password) async {
     try {
+      print('🌐 AUTH SERVICE - Sending login request for: $studentId');
+
       final response = await _apiService.post(
-        '/register',
-        userData,
+        '/login',
+        {'student_id': studentId, 'password': password},
       );
 
-      return {
-        'success': true,
-        'message': response['message'],
-        'data': response,
-      };
+      print('📥 Login API Response: $response');
+
+      // Check if response contains user data
+      if (response['student_id'] != null) {
+        return {
+          'success': true,
+          'message': response['message'] ?? 'Login successful',
+          'user': User.fromJson(response),
+        };
+      } else {
+        return {
+          'success': false,
+          'message': response['error'] ?? 'Login failed - no user data',
+        };
+      }
     } catch (e) {
+      print('💥 AUTH SERVICE - Login error: $e');
       return {
         'success': false,
         'message': e.toString(),
@@ -69,8 +88,6 @@ class AuthService {
     return User.fromJson(response);
   }
 
-
-
   Future<Map<String, dynamic>> requestPasswordReset(String studentId) async {
     try {
       final response = await _apiService.post(
@@ -100,7 +117,7 @@ class AuthService {
   ) async {
     try {
       final response = await _apiService.post(
-        '/auth/reset-password',
+        '/reset-password', // Fixed endpoint - removed /auth prefix
         {
           'student_id': studentId,
           'token': token,
@@ -119,52 +136,5 @@ class AuthService {
         'message': e.toString(),
       };
     }
-  }
-
-  // Optional: For testing without backend
-  Future<Map<String, dynamic>> requestPasswordResetSimulated(String studentId) async {
-    await Future.delayed(const Duration(seconds: 2)); // Simulate API call
-    
-    if (studentId.isNotEmpty) {
-      return {
-        'success': true,
-        'message': 'Password reset link sent to your registered email',
-        'email': 'user@example.com', // Simulated email
-        'token': 'simulated_token_${DateTime.now().millisecondsSinceEpoch}', // Simulated token
-      };
-    } else {
-      return {
-        'success': false,
-        'message': 'Student ID is required',
-      };
-    }
-  }
-
-  Future<Map<String, dynamic>> resetPasswordSimulated(
-    String studentId,
-    String token,
-    String newPassword,
-    String confirmPassword,
-  ) async {
-    await Future.delayed(const Duration(seconds: 2)); 
-    
-    if (newPassword != confirmPassword) {
-      return {
-        'success': false,
-        'message': 'Passwords do not match',
-      };
-    }
-    
-    if (newPassword.length < 6) {
-      return {
-        'success': false,
-        'message': 'Password must be at least 6 characters',
-      };
-    }
-    
-    return {
-      'success': true,
-      'message': 'Password reset successfully',
-    };
   }
 }

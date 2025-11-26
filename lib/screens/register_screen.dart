@@ -94,58 +94,59 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildHeader(Size size) {
-  return Container(
-    width: double.infinity,
-    padding: EdgeInsets.symmetric(vertical: size.height * 0.01),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        // Back Button
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: size.height * 0.01),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Back Button
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: Icon(Icons.arrow_back_rounded, color: const Color(0xFF667EEA), size: size.width * 0.06),
+              padding: EdgeInsets.all(size.width * 0.02),
+              constraints: const BoxConstraints(),
+            ),
           ),
-          child: IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.arrow_back_rounded, color: const Color(0xFF667EEA), size: size.width * 0.06),
-            padding: EdgeInsets.all(size.width * 0.02),
-            constraints: const BoxConstraints(),
-          ),
-        ),
 
-        // Title
-        Text(
-          'New Account',
-          style: TextStyle(
-            fontSize: size.width * 0.06,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
+          // Title
+          Text(
+            'New Account',
+            style: TextStyle(
+              fontSize: size.width * 0.06,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
           ),
-        ),
 
-        // Optimized Logo Loading
-        Container(
-          width: 60, // Fixed small size
-          height: 60, // Fixed small size
-          child: Image.asset(
-            'assets/images/logo1.png',
-            fit: BoxFit.contain,
-            cacheWidth: 80, // Reduces memory usage
-            filterQuality: FilterQuality.low, // Better performance
+          // Optimized Logo Loading
+          Container(
+            width: 60,
+            height: 60,
+            child: Image.asset(
+              'assets/images/logo1.png',
+              fit: BoxFit.contain,
+              cacheWidth: 80,
+              filterQuality: FilterQuality.low,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
   Widget _buildFormCard(AuthProvider authProvider, Size size) {
     return Container(
       decoration: BoxDecoration(
@@ -360,64 +361,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildRegisterButton(AuthProvider authProvider, Size size) {
-  return Container(
-    width: double.infinity,
-    decoration: BoxDecoration(
-      color: const Color(0xFF60B5FF), // Changed to solid color
-      borderRadius: BorderRadius.circular(14),
-      boxShadow: [
-        BoxShadow(
-          color: const Color(0xFF60B5FF).withOpacity(0.4), // Updated shadow color
-          blurRadius: 20, 
-          offset: const Offset(0, 8)
-        ),
-      ],
-    ),
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF60B5FF),
         borderRadius: BorderRadius.circular(14),
-        onTap: authProvider.isLoading ? null : () async {
-          if (_formKey.currentState!.validate()) await _registerUser(authProvider);
-        },
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: size.height * 0.018),
-          child: authProvider.isLoading
-              ? Center(
-                  child: SizedBox(
-                    width: size.width * 0.05,
-                    height: size.width * 0.05,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.person_add_alt_1_rounded, 
-                      color: Colors.white, // Changed to white
-                      size: size.width * 0.05
-                    ),
-                    SizedBox(width: size.width * 0.025),
-                    Text(
-                      'CREATE ACCOUNT', 
-                      style: TextStyle(
-                        color: Colors.white, // Changed to white
-                        fontSize: size.width * 0.038, 
-                        fontWeight: FontWeight.w700, 
-                        letterSpacing: 0.8
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF60B5FF).withOpacity(0.4),
+            blurRadius: 20, 
+            offset: const Offset(0, 8)
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: authProvider.isLoading ? null : () async {
+            if (_formKey.currentState!.validate()) await _registerUser(authProvider);
+          },
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: size.height * 0.018),
+            child: authProvider.isLoading
+                ? Center(
+                    child: SizedBox(
+                      width: size.width * 0.05,
+                      height: size.width * 0.05,
+                      child: const CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     ),
-                  ],
-                ),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.person_add_alt_1_rounded, 
+                        color: Colors.white,
+                        size: size.width * 0.05
+                      ),
+                      SizedBox(width: size.width * 0.025),
+                      Text(
+                        'CREATE ACCOUNT', 
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: size.width * 0.038, 
+                          fontWeight: FontWeight.w700, 
+                          letterSpacing: 0.8
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLoginLink() {
     return Center(
@@ -434,34 +435,95 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _registerUser(AuthProvider authProvider) async {
-    final data = {
-      "email": _emailController.text.trim(),
-      "password": _passwordController.text,
-      "username": _emailController.text.trim().split('@').first,
-      "first_name": _firstNameController.text.trim(),
-      "last_name": _lastNameController.text.trim(),
-      "middle_name": _middleNameController.text.trim().isEmpty ? null : _middleNameController.text.trim(),
-      "course": _selectedCourse ?? '',
-      "year_level": _selectedYearLevel ?? '',
-      "section": _sectionController.text.trim().isEmpty ? null : _sectionController.text.trim(),
-      "department": _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
-      "college": _selectedCollege ?? '',
-      "contact_number": _contactNumberController.text.trim().isEmpty ? null : _contactNumberController.text.trim(),
-      "address": _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-    };
+    try {
+      print('🚀 STARTING REGISTRATION PROCESS');
+      
+      // Validate dropdowns
+      if (_selectedCourse == null || _selectedYearLevel == null || _selectedCollege == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Please fill all required academic information'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-    final success = await authProvider.register(data);
-    
-    if (success && mounted) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => VerifyEmailScreen(email: _emailController.text.trim())));
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(children: const [Icon(Icons.check_circle_rounded, color: Colors.white), SizedBox(width: 12), Expanded(child: Text('Registration successful! Check your email'))]),
-          backgroundColor: Colors.green[600],
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
+      final data = {
+        "email": _emailController.text.trim(),
+        "password": _passwordController.text,
+        "username": _emailController.text.trim().split('@').first,
+        "first_name": _firstNameController.text.trim(),
+        "last_name": _lastNameController.text.trim(),
+        "middle_name": _middleNameController.text.trim().isEmpty ? null : _middleNameController.text.trim(),
+        "course": _selectedCourse!,
+        "year_level": _selectedYearLevel!,
+        "section": _sectionController.text.trim().isEmpty ? null : _sectionController.text.trim(),
+        "department": _departmentController.text.trim().isEmpty ? null : _departmentController.text.trim(),
+        "college": _selectedCollege!,
+        "contact_number": _contactNumberController.text.trim().isEmpty ? null : _contactNumberController.text.trim(),
+        "address": _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        "student_id": "", // Send empty string
+      };
+
+      print('📦 REGISTRATION DATA:');
+      print('   Email: ${data['email']}');
+      print('   First Name: ${data['first_name']}');
+      print('   Last Name: ${data['last_name']}');
+      print('   Course: ${data['course']}');
+      print('   Year Level: ${data['year_level']}');
+      print('   College: ${data['college']}');
+      print('   Full Data: $data');
+
+      final success = await authProvider.register(data);
+      
+      print('🎯 REGISTRATION RESULT: $success');
+      
+      if (success && mounted) {
+        print('✅ NAVIGATING TO VERIFICATION SCREEN');
+        Navigator.pushReplacement(
+          context, 
+          MaterialPageRoute(builder: (context) => VerifyEmailScreen(email: _emailController.text.trim()))
+        );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(children: const [
+              Icon(Icons.check_circle_rounded, color: Colors.white), 
+              SizedBox(width: 12), 
+              Expanded(child: Text('Registration successful! Check your email'))
+            ]),
+            backgroundColor: Colors.green[600],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      } else {
+        print('❌ REGISTRATION FAILED: ${authProvider.errorMessage}');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(children: [
+                Icon(Icons.error_rounded, color: Colors.white), 
+                SizedBox(width: 12), 
+                Expanded(child: Text('Registration failed: ${authProvider.errorMessage}'))
+              ]),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('💥 REGISTRATION EXCEPTION: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Registration error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
