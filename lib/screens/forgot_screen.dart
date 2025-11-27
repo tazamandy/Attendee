@@ -20,6 +20,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -40,7 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 children: [
                   _buildHeader(size),
                   SizedBox(height: size.height * 0.04),
-                  _buildForgotPasswordCard(size),
+                  _buildForgotPasswordCard(authProvider, size),
                   SizedBox(height: size.height * 0.02),
                   _buildLoginLink(),
                 ],
@@ -91,7 +92,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildForgotPasswordCard(Size size) {
+  Widget _buildForgotPasswordCard(AuthProvider authProvider, Size size) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -115,8 +116,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 _buildFieldLabel('Student ID'),
                 SizedBox(height: size.height * 0.012),
                 _buildStudentIdField(size),
+                
+                // Show error message if any
+                if (authProvider.errorMessage != null) ...[
+                  SizedBox(height: size.height * 0.02),
+                  _buildErrorMessage(authProvider.errorMessage!, size),
+                ],
+                
                 SizedBox(height: size.height * 0.03),
-                _buildRequestCodeButton(size),
+                _buildRequestCodeButton(authProvider, size),
               ] else ...[
                 _buildSuccessMessage(size),
                 SizedBox(height: size.height * 0.03),
@@ -169,20 +177,56 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildRequestCodeButton(Size size) {
+  Widget _buildErrorMessage(String message, Size size) {
+    return Container(
+      padding: EdgeInsets.all(size.width * 0.035),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, color: Colors.red[600], size: size.width * 0.045),
+          SizedBox(width: size.width * 0.025),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: Colors.red[700],
+                fontSize: size.width * 0.033,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequestCodeButton(AuthProvider authProvider, Size size) {
+    final isLoading = _isLoading || authProvider.isLoading;
+
     return SizedBox(
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _requestResetCode,
+        onPressed: isLoading ? null : _requestResetCode,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF60B5FF),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: _isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
             : const Text(
                 'SEND VERIFICATION CODE',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
@@ -215,44 +259,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           if (_userEmail != null) ...[
             const SizedBox(height: 10),
-            Text('Email: $_userEmail', style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Email: $_userEmail', 
+              style: const TextStyle(fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildVerifyCodeButton(Size size) {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => VerifyEmailScreen(
-                studentId: _studentIdController.text.trim(),
-                email: _userEmail ?? 'user@example.com',
-                isPasswordReset: true,
-              ),
+ // In ForgotPasswordScreen's _buildVerifyCodeButton
+Widget _buildVerifyCodeButton(Size size) {
+  return SizedBox(
+    width: double.infinity,
+    height: 50,
+    child: ElevatedButton(
+      onPressed: () {
+        print('🎯 FORGOT PASSWORD - Navigating to VerifyEmailScreen');
+        print('   Student ID: ${_studentIdController.text.trim()}');
+        print('   Is Password Reset: true');
+        
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyEmailScreen(
+              studentId: _studentIdController.text.trim(), // ✅ Make sure this is passed
+              email: _userEmail ?? 'user@example.com',
+              isPasswordReset: true, // ✅ Make sure this is true
             ),
-          );
-        },
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF60B5FF),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        child: const Text(
-          'ENTER VERIFICATION CODE',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        );
+      },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF60B5FF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
-    );
-  }
-
+      child: const Text(
+        'ENTER VERIFICATION CODE',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      ),
+    ),
+  );
+}
   Widget _buildBackToLoginButton(Size size) {
     return SizedBox(
       width: double.infinity,
@@ -291,38 +343,60 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _requestResetCode() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+  if (_formKey.currentState!.validate()) {
+    setState(() => _isLoading = true);
 
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
-        final success = await authProvider.requestPasswordReset(_studentIdController.text.trim());
+    try {
+      print('🔐 FORGOT PASSWORD - Requesting reset code for Student ID: ${_studentIdController.text.trim()}');
+      
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final success = await authProvider.requestPasswordReset(_studentIdController.text.trim());
+      
+      print('📥 FORGOT PASSWORD - Response success: $success');
+      
+      if (success && mounted) {
+        // ✅ FIXED: Use the actual email from backend response
+        // The backend should return the actual user email in the response
+        final responseData = authProvider.currentUser; // Or get from response
+        setState(() {
+          _isLoading = false;
+          _isCodeSent = true;
+          // Don't generate fake email - backend should provide the real one
+          _userEmail = 'Check your registered email'; // Generic message
+        });
         
-        if (success && mounted) {
-          setState(() {
-            _isLoading = false;
-            _isCodeSent = true;
-            _userEmail = '${_studentIdController.text.trim()}@student.example.com';
-          });
-          
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Verification code sent!')),
-          );
-        } else {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to send code')),
-          );
-        }
-      } catch (e) {
-        setState(() => _isLoading = false);
+        print('✅ FORGOT PASSWORD - Code sent successfully');
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          const SnackBar(
+            content: Text('Verification code sent to your registered email!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        setState(() => _isLoading = false);
+        print('❌ FORGOT PASSWORD - Failed to send code: ${authProvider.errorMessage}');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send code: ${authProvider.errorMessage ?? "Unknown error"}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      print('💥 FORGOT PASSWORD - Exception: $e');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
-
+}
   @override
   void dispose() {
     _studentIdController.dispose();

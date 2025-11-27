@@ -7,10 +7,6 @@ import 'screens/forgot_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/student_dashboard.dart';
 import 'screens/admin_dashboard.dart';
-import 'screens/my_qr_code_screen.dart';
-import 'screens/reset_password_screen.dart';
-import 'screens/verify_user_screen.dart';
-
 
 void main() {
   runApp(const MyApp());
@@ -37,37 +33,27 @@ class MyApp extends StatelessWidget {
           '/': (context) => const _AuthWrapper(),
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
-          '/forgot': (context) => const ForgotPasswordScreen(),
-          '/dashboard': (context) => const DashboardScreen(),
-          '/student_dashboard': (context) => const StudentDashboard(),
-          '/admin_dashboard': (context) => const AdminDashboard(),
-          '/qr': (context) => const MyQRCodeScreen(),
-          '/reset_password': (context) => const ResetPasswordScreen(),
-          '/verify': (context) => VerifyUserScreen(tempUserId: 'TEMP_USER_ID'),
-
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/student-dashboard': (context) => const StudentDashboard(),
+          '/admin-dashboard': (context) => const AdminDashboard(),
         },
-
-        // optional pero maganda meron:
-        onUnknownRoute: (settings) {
-          return MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
-          );
-        },
+ 
+       onGenerateRoute: (settings) {
+  // Handle verify-email with dynamic email parameter
+  if (settings.name == '/verify') {
+    final args = settings.arguments as Map<String, dynamic>?;
+    return MaterialPageRoute(
+      builder: (context) => VerifyEmailScreen(
+        email: args?['email'] ?? '',
+        studentId: args?['studentId'],
+        isPasswordReset: args?['isPasswordReset'] ?? false,
       ),
     );
   }
-}
-
-class _AuthWrapper extends StatelessWidget {
-  const _AuthWrapper();
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, _) {
-        // TEMPORARY
-        return const LoginScreen();
-      },
+  return null;
+},
+        debugShowCheckedModeBanner: false,
+      ),
     );
   }
 }

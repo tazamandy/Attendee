@@ -11,63 +11,61 @@ class AuthProvider with ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _resetToken;
+  String? _resetStudentId; // Store student ID associated with reset
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get resetToken => _resetToken;
+  String? get resetStudentId => _resetStudentId;
 
-  // Enhanced register method with detailed logging
+  // Enhanced register method
   Future<bool> register(Map<String, dynamic> userData) async {
-    _isLoading = true;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
-
+    
     print('🔐 AUTH PROVIDER - Starting registration');
     print('📤 Sending data: $userData');
 
     try {
       final result = await _authService.register(userData);
-      _isLoading = false;
+      _setLoading(false);
 
       print('📥 Auth Provider Response: $result');
 
       if (result['success'] == true) {
         print('✅ AUTH PROVIDER - Registration successful');
-        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Registration failed';
         print('❌ AUTH PROVIDER - Registration failed: $_errorMessage');
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      _isLoading = false;
+      _setLoading(false);
       _errorMessage = 'Network error: $e';
       print('💥 AUTH PROVIDER - Exception: $e');
-      notifyListeners();
       return false;
     }
   }
 
   // Enhanced login method
   Future<bool> login(String studentId, String password) async {
-    _isLoading = true;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
 
     print('🔐 AUTH PROVIDER - Starting login for: $studentId');
 
     try {
       final result = await _authService.login(studentId, password);
-      _isLoading = false;
+      _setLoading(false);
 
       print('📥 Login Response: $result');
 
       if (result['success'] == true && result['user'] != null) {
         _currentUser = result['user'];
         
-        // Convert User object to Map for storage
         final userData = {
           'student_id': _currentUser!.userId,
           'email': _currentUser!.email,
@@ -84,58 +82,127 @@ class AuthProvider with ChangeNotifier {
         
         await _storageService.saveUserData(userData);
         print('✅ AUTH PROVIDER - Login successful for: ${_currentUser!.email}');
-        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Login failed';
         print('❌ AUTH PROVIDER - Login failed: $_errorMessage');
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      _isLoading = false;
+      _setLoading(false);
       _errorMessage = 'Login error: $e';
       print('💥 AUTH PROVIDER - Login exception: $e');
-      notifyListeners();
       return false;
     }
   }
 
-  // Password reset methods
+  // ✅ FIXED: Enhanced password reset request method
   Future<bool> requestPasswordReset(String studentId) async {
-    _isLoading = true;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
+    _resetToken = null; // Clear previous token
+    _resetStudentId = null;
+
+    print('🔐 AUTH PROVIDER - Requesting password reset for: $studentId');
 
     try {
       final result = await _authService.requestPasswordReset(studentId);
-      _isLoading = false;
+      _setLoading(false);
 
-      if (result['success']) {
-        notifyListeners();
+      print('📥 Request Password Reset Response: $result');
+
+      if (result['success'] == true) {
+        print('✅ AUTH PROVIDER - Password reset request successful');
+        print('📧 Email: ${result['email']}');
+        print('🎫 Student ID: ${result['student_id']}');
+        
         return true;
       } else {
-        _errorMessage = result['message'];
-        notifyListeners();
+        _errorMessage = result['message'] ?? 'Failed to request password reset';
+        print('❌ AUTH PROVIDER - Password reset request failed: $_errorMessage');
         return false;
       }
     } catch (e) {
-      _isLoading = false;
+      _setLoading(false);
       _errorMessage = e.toString();
-      notifyListeners();
+      print('💥 AUTH PROVIDER - Password reset request exception: $e');
       return false;
     }
   }
 
+  // ✅ FIXED: Enhanced reset code verification with better token handling
+  Future<bool> verifyResetCode(String studentId, String code) async {
+    _setLoading(true);
+    _errorMessage = null;
+    _resetToken = null;
+
+    print('🔐 AUTH PROVIDER - Verifying reset code');
+    print('📤 Student ID: $studentId, Code: $code');
+
+    try {
+      final result = await _authService.verifyResetCode(studentId, code);
+      _setLoading(false);
+
+      print('📥 Verify Reset Code Provider Response: $result');
+
+      if (result['success'] == true) {
+        // ✅ FIXED: Multiple ways to extract token
+        _resetToken = _extractToken(result);
+        _resetStudentId = studentId;
+        
+        if (_resetToken == null) {
+          _errorMessage = 'Reset token not found in response';
+          print('❌ AUTH PROVIDER - Token extraction failed');
+          return false;
+        }
+
+        print('✅ AUTH PROVIDER - Reset code verification successful');
+        print('🎯 Token: $_resetToken');
+        print('📧 Email: ${result['email']}');
+        print('🎫 Student ID: ${result['student_id']}');
+        
+        return true;
+      } else {
+        _errorMessage = result['message'] ?? 'Verification failed';
+        print('❌ AUTH PROVIDER - Reset code verification failed: $_errorMessage');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _errorMessage = 'Verification error: $e';
+      print('💥 AUTH PROVIDER - Reset code verification exception: $e');
+      return false;
+    }
+  }
+
+  // ✅ FIXED: Enhanced reset password with validation
   Future<bool> resetPassword(
     String studentId,
     String token,
     String newPassword,
     String confirmPassword,
   ) async {
-    _isLoading = true;
+    _setLoading(true);
     _errorMessage = null;
-    notifyListeners();
+
+    print('🔐 AUTH PROVIDER - Resetting password');
+    print('📤 Student ID: $studentId, Token: $token');
+
+    // Validate token presence
+    if (token.isEmpty) {
+      _setLoading(false);
+      _errorMessage = 'Reset token is required';
+      print('❌ AUTH PROVIDER - Reset token is empty');
+      return false;
+    }
+
+    // Validate password match
+    if (newPassword != confirmPassword) {
+      _setLoading(false);
+      _errorMessage = 'Passwords do not match';
+      print('❌ AUTH PROVIDER - Passwords do not match');
+      return false;
+    }
 
     try {
       final result = await _authService.resetPassword(
@@ -144,46 +211,86 @@ class AuthProvider with ChangeNotifier {
         newPassword,
         confirmPassword,
       );
-      _isLoading = false;
+      _setLoading(false);
 
-      if (result['success']) {
-        notifyListeners();
+      print('📥 Reset Password Response: $result');
+
+      if (result['success'] == true) {
+        print('✅ AUTH PROVIDER - Password reset successful');
+        // Clear reset data after successful reset
+        _clearResetData();
         return true;
       } else {
-        _errorMessage = result['message'];
-        notifyListeners();
+        _errorMessage = result['message'] ?? 'Failed to reset password';
+        print('❌ AUTH PROVIDER - Password reset failed: $_errorMessage');
         return false;
       }
     } catch (e) {
-      _isLoading = false;
+      _setLoading(false);
       _errorMessage = e.toString();
-      notifyListeners();
+      print('💥 AUTH PROVIDER - Password reset exception: $e');
       return false;
     }
   }
 
-  // Email verification
-  Future<bool> verifyEmail(String email, String code) async {
-    _isLoading = true;
-    _errorMessage = null;
+  // ✅ NEW: Helper method to extract token from response
+  String? _extractToken(Map<String, dynamic> result) {
+    // Try different possible token keys
+    final token = result['token'] ?? 
+                 result['reset_token'] ?? 
+                 result['resetToken'] ?? 
+                 result['access_token'];
+    
+    if (token != null) {
+      return token.toString();
+    }
+    
+    // If no token found in common keys, check the entire response
+    print('🔍 DEBUG - Searching for token in response keys: ${result.keys}');
+    
+    for (var key in result.keys) {
+      if (key.toString().toLowerCase().contains('token')) {
+        print('🎯 Found potential token key: $key = ${result[key]}');
+        return result[key]?.toString();
+      }
+    }
+    
+    return null;
+  }
+
+  // ✅ NEW: Clear reset data
+  void _clearResetData() {
+    _resetToken = null;
+    _resetStudentId = null;
     notifyListeners();
+  }
+
+  // Email verification for registration
+  Future<bool> verifyEmail(String email, String code) async {
+    _setLoading(true);
+    _errorMessage = null;
+
+    print('🔐 AUTH PROVIDER - Verifying email for registration');
+    print('📤 Email: $email, Code: $code');
 
     try {
       final result = await _authService.verifyEmail(email, code);
-      _isLoading = false;
+      _setLoading(false);
 
-      if (result['success']) {
-        notifyListeners();
+      print('📥 Verify Email Response: $result');
+
+      if (result['success'] == true) {
+        print('✅ AUTH PROVIDER - Email verification successful');
         return true;
       } else {
-        _errorMessage = result['message'];
-        notifyListeners();
+        _errorMessage = result['message'] ?? 'Email verification failed';
+        print('❌ AUTH PROVIDER - Email verification failed: $_errorMessage');
         return false;
       }
     } catch (e) {
-      _isLoading = false;
+      _setLoading(false);
       _errorMessage = e.toString();
-      notifyListeners();
+      print('💥 AUTH PROVIDER - Email verification exception: $e');
       return false;
     }
   }
@@ -198,6 +305,7 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     _currentUser = null;
+    _clearResetData();
     await _storageService.clearUserData();
     notifyListeners();
   }
@@ -207,8 +315,28 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  void clearResetToken() {
+    _clearResetData();
+  }
+
+  // Enhanced debug method
+  void debugResetToken() {
+    print('🔍 DEBUG - Reset Token: $_resetToken');
+    print('🔍 DEBUG - Reset Token Type: ${_resetToken?.runtimeType}');
+    print('🔍 DEBUG - Reset Token Length: ${_resetToken?.length}');
+    print('🔍 DEBUG - Reset Student ID: $_resetStudentId');
+    print('🔍 DEBUG - Has Token: ${_resetToken != null && _resetToken!.isNotEmpty}');
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  // ✅ NEW: Validate if reset flow is ready
+  bool isResetFlowReady() {
+    return _resetToken != null && 
+           _resetToken!.isNotEmpty && 
+           _resetStudentId != null;
   }
 }
