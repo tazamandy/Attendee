@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:convert';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
+import 'qr_code_dialog.dart'; // Import the new QR code dialog
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({Key? key}) : super(key: key);
@@ -22,7 +21,6 @@ class StudentDashboard extends StatelessWidget {
       print('Email: ${user.email}');
       print('Course: ${user.course}');
       print('Year Level: ${user.yearLevel}');
-      print('Student ID: ${user.studentId}');
       print('User Object: $user');
     }
 
@@ -118,8 +116,8 @@ class StudentDashboard extends StatelessWidget {
   }
 
   Widget _buildProfileOverview(dynamic user) {
-    // Get the student ID - try different possible property names
-    final studentId = _getStudentId(user);
+    // For now, let's use userId as the Student ID
+    final studentId = user?.userId?.toString() ?? 'N/A';
     
     return Container(
       width: double.infinity,
@@ -238,53 +236,6 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 
-  // Helper method to get student ID from User object
-  String _getStudentId(dynamic user) {
-    if (user == null) return 'N/A';
-    
-    // Try to access properties using reflection-like approach
-    try {
-      // Try common property names for student ID
-      if (_hasProperty(user, 'studentId')) {
-        return _getProperty(user, 'studentId')?.toString() ?? 'N/A';
-      }
-      if (_hasProperty(user, 'student_id')) {
-        return _getProperty(user, 'student_id')?.toString() ?? 'N/A';
-      }
-      if (_hasProperty(user, 'studentID')) {
-        return _getProperty(user, 'studentID')?.toString() ?? 'N/A';
-      }
-      if (_hasProperty(user, 'id')) {
-        return _getProperty(user, 'id')?.toString() ?? 'N/A';
-      }
-      // Use userId as fallback
-      return user.studentId?.toString() ?? 'N/A';
-    } catch (e) {
-      print('Error getting student ID: $e');
-      return user.studentId?.toString() ?? 'N/A';
-    }
-  }
-
-  // Helper method to check if object has a property
-  bool _hasProperty(dynamic obj, String propertyName) {
-    try {
-      final value = _getProperty(obj, propertyName);
-      return value != null;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // Helper method to get property value using reflection
-  dynamic _getProperty(dynamic obj, String propertyName) {
-    try {
-      // Try to access the property using reflection
-      return (obj as dynamic).$propertyName;
-    } catch (e) {
-      return null;
-    }
-  }
-
   Widget _buildInfoColumn(String title, String value) {
     return Expanded(
       child: Column(
@@ -338,7 +289,13 @@ class StudentDashboard extends StatelessWidget {
               'QR Code',
               Icons.qr_code_2_rounded,
               () {
-                _showQRCodeDialog(context, user);
+                // Now calling the QR Code Dialog from separate file
+                final studentId = user?.userId?.toString() ?? 'N/A';
+                QRCodeDialog.show(
+                  context,
+                  user: user,
+                  studentId: studentId,
+                );
               },
             ),
             _buildActionCard(
@@ -530,156 +487,5 @@ class StudentDashboard extends StatelessWidget {
         );
       },
     );
-  }
-
-  void _showQRCodeDialog(BuildContext context, dynamic user) {
-    final studentId = _getStudentId(user);
-    final qrData = _generateQRData(user, studentId);
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Student QR Code',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1D1F),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Scan for attendance verification',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // QR Code
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.grey[200]!,
-                    ),
-                  ),
-                  child: QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 200.0,
-                    backgroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Student Info
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF60B5FF),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${user?.firstName ?? ''} ${user?.lastName ?? ''}',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Student ID: $studentId',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${user?.course ?? 'No Course'} • Year ${user?.yearLevel ?? 'N/A'}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Close Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF60B5FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Close',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  String _generateQRData(dynamic user, String studentId) {
-    final data = {
-      'student_id': studentId,
-      'first_name': user?.firstName ?? '',
-      'last_name': user?.lastName ?? '',
-      'email': user?.email ?? '',
-      'course': user?.course ?? '',
-      'year_level': user?.yearLevel?.toString() ?? '',
-      'type': 'student_attendance',
-      'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-    };
-    
-    return jsonEncode(data);
   }
 }
