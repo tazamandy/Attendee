@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import 'reset_password_screen.dart'; 
 
 class VerifyEmailScreen extends StatefulWidget {
   final String email;
@@ -12,6 +13,7 @@ class VerifyEmailScreen extends StatefulWidget {
     required this.email,
     this.studentId,
     this.isPasswordReset = false,
+    // ❌ REMOVED: resetToken parameter
   }) : super(key: key);
 
   @override
@@ -28,6 +30,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   void initState() {
     super.initState();
     _focusNodes[0].requestFocus();
+    _debugInfo(); // ✅ UPDATED: Debug info
+  }
+
+  // ✅ UPDATED: Debug method
+  void _debugInfo() {
+    print('🔍 VERIFY SCREEN - Debug Info:');
+    print('🔍 Is Password Reset: ${widget.isPasswordReset}');
+    print('🔍 Student ID: ${widget.studentId}');
+    print('🔍 Email: ${widget.email}');
   }
 
   @override
@@ -52,6 +63,13 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                 _buildHeaderContent(size),
                 SizedBox(height: size.height * 0.03),
                 _buildEmailInfo(size),
+                
+                // ✅ ADDED: Provider token status (visible in debug mode)
+                if (widget.isPasswordReset) ...[
+                  SizedBox(height: size.height * 0.01),
+                  _buildTokenStatusInfo(authProvider, size),
+                ],
+                
                 SizedBox(height: size.height * 0.04),
                 _buildCodeInputFields(size),
                 
@@ -72,6 +90,45 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       ),
     );
   }
+
+  // ✅ UPDATED: Token status info widget
+  Widget _buildTokenStatusInfo(AuthProvider authProvider, Size size) {
+    final hasToken = authProvider.resetToken != null && authProvider.resetToken!.isNotEmpty;
+    
+    return Container(
+      padding: EdgeInsets.all(size.width * 0.03),
+      decoration: BoxDecoration(
+        color: hasToken ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: hasToken ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            hasToken ? Icons.check_circle : Icons.info_outline, 
+            color: hasToken ? Colors.green[600] : Colors.orange[600], 
+            size: size.width * 0.04
+          ),
+          SizedBox(width: size.width * 0.02),
+          Expanded(
+            child: Text(
+              hasToken 
+                ? 'Token ready for password reset' 
+                : 'Token will be generated after verification',
+              style: TextStyle(
+                color: hasToken ? Colors.green[700] : Colors.orange[700],
+                fontSize: size.width * 0.03,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ... keep all your existing UI methods (_buildBackButton, _buildHeaderContent, etc.)
+  // They remain the same as in your original code
 
   Widget _buildBackButton(Size size) {
     return Container(
@@ -365,6 +422,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     return _codeControllers.map((controller) => controller.text).join();
   }
 
+  // ✅ UPDATED: Verify code method - simplified
   Future<void> _verifyCode() async {
     if (!_isAllFieldsFilled()) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -381,32 +439,78 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
     try {
       final code = _getVerificationCode();
-      print(' VERIFY SCREEN - Verifying code: $code for email: ${widget.email}');
+      print('🔐 VERIFY SCREEN - Verifying code: $code');
 
-     
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.verifyEmail(widget.email, code);
+      
+      bool success;
+
+      if (widget.isPasswordReset) {
+        if (widget.studentId == null) {
+          throw Exception('Student ID is required for password reset');
+        }
+
+        print('📤 PASSWORD RESET - Student ID: ${widget.studentId}, Code: $code');
+        
+        // ✅ FIXED: Call verifyResetCode - this stores the token in AuthProvider
+        success = await authProvider.verifyResetCode(widget.studentId!, code);
+        
+        if (success) {
+          print('✅ Token stored in AuthProvider: ${authProvider.resetToken}');
+        }
+        
+      } else {
+        // Use verifyEmail for registration
+        print('📤 EMAIL REGISTRATION - Email: ${widget.email}, Code: $code');
+        success = await authProvider.verifyEmail(widget.email, code);
+      }
 
       if (success && mounted) {
-        print(' VERIFY SCREEN - Email verification successful!');
+        print('✅ VERIFY SCREEN - Verification successful!');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.isPasswordReset 
-              ? 'Password reset successful!' 
+              ? 'Verification successful! Set your new password.' 
               : 'Email verified successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
         );
         
-        // Clear all fields after successful verification
         _clearAllFields();
         
-        // Navigate to login screen
-        Navigator.pushReplacementNamed(context, '/login');
+        if (widget.isPasswordReset) {
+          // ✅ FIXED: Use the token from AuthProvider (not passed as parameter)
+          final authProvider = Provider.of<AuthProvider>(context, listen: false);
+          
+          // Validate that we have the token
+          if (!authProvider.isResetFlowReady()) {
+            print('❌ VERIFY SCREEN - Reset flow not ready!');
+            print('🔍 Token: ${authProvider.resetToken}');
+            print('🔍 Student ID: ${authProvider.resetStudentId}');
+            throw Exception('Reset token not available. Please try again.');
+          }
+          
+          print('🎯 Navigating to ResetPasswordScreen');
+          print('🔍 Using token from AuthProvider: ${authProvider.resetToken}');
+          
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(
+                studentId: widget.studentId!,
+                email: widget.email,
+                // ❌ NO token parameter - ResetPasswordScreen gets it from AuthProvider
+              ),
+            ),
+          );
+        } else {
+          print('🎯 Registration - Navigating to login');
+          Navigator.pushReplacementNamed(context, '/login');
+        }
       } else {
-        print('❌ VERIFY SCREEN - Verification failed');
+        print('❌ VERIFY SCREEN - Verification failed: ${authProvider.errorMessage}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -415,7 +519,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               behavior: SnackBarBehavior.floating,
             ),
           );
-          // Refocus on first field for retry
           _focusNodes[0].requestFocus();
         }
       }
@@ -443,9 +546,15 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     try {
       print('🔄 VERIFY SCREEN - Resending code to: ${widget.email}');
       
-      // TODO: Implement actual resend code API call
-      // For now, just simulate
-      await Future.delayed(const Duration(seconds: 2));
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      if (widget.isPasswordReset && widget.studentId != null) {
+        // Resend password reset code
+        await authProvider.requestPasswordReset(widget.studentId!);
+      } else {
+        // TODO: Implement resend email verification code
+        await Future.delayed(const Duration(seconds: 2));
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,7 @@ import 'screens/verify_email_screen.dart';
 import 'screens/forgot_screen.dart';
 import 'screens/student_dashboard.dart';
 import 'screens/admin_dashboard.dart';
+import 'screens/reset_password_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -37,20 +38,37 @@ class MyApp extends StatelessWidget {
           '/admin-dashboard': (context) => const AdminDashboard(),
         },
  
-       onGenerateRoute: (settings) {
-  // Handle verify-email with dynamic email parameter
-  if (settings.name == '/verify') {
-    final args = settings.arguments as Map<String, dynamic>?;
-    return MaterialPageRoute(
-      builder: (context) => VerifyEmailScreen(
-        email: args?['email'] ?? '',
-        studentId: args?['studentId'],
-        isPasswordReset: args?['isPasswordReset'] ?? false,
-      ),
-    );
-  }
-  return null;
-},
+        onGenerateRoute: (settings) {
+          // Handle verify-email with dynamic email parameter
+          if (settings.name == '/verify') {
+            final args = settings.arguments as Map<String, dynamic>?;
+            return MaterialPageRoute(
+              builder: (context) => VerifyEmailScreen(
+                email: args?['email'] ?? '',
+                studentId: args?['studentId'],
+                isPasswordReset: args?['isPasswordReset'] ?? false,
+              ),
+            );
+          }
+          
+          // ✅ UPDATED: Handle reset-password route with only studentId and email
+          if (settings.name == '/reset-password') {
+            final args = settings.arguments as Map<String, dynamic>?;
+            if (args == null) {
+              // Fallback to login if no arguments provided
+              return MaterialPageRoute(builder: (context) => const LoginScreen());
+            }
+            return MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(
+                studentId: args['studentId'] ?? '',
+                email: args['email'] ?? '',
+                // ❌ REMOVED: token parameter since we get it from AuthProvider
+              ),
+            );
+          }
+          
+          return null;
+        },
         debugShowCheckedModeBanner: false,
       ),
     );
