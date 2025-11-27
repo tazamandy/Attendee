@@ -3,7 +3,7 @@ class AppConstants {
   static const String appName = "Attendance System";
   // FIX: Make sure this matches your backend URL
   static const String baseUrl = "http://192.168.68.107:9090";
-  
+
   // API Endpoints
   static const String loginEndpoint = "/login";
   static const String registerEndpoint = "/register";

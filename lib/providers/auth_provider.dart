@@ -1,150 +1,214 @@
-// lib/services/auth_service.dart
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import '../config/constants.dart';  // Import para sa BASE_URL
-import '../models/auth_model.dart';  // Para sa User model
+// lib/providers/auth_provider.dart
+import 'package:flutter/foundation.dart';
+import '../services/auth_service.dart';
+import '../services/storage_service.dart';
+import '../models/auth_model.dart';
 
-class AuthService {
-  // Base URL from constants
-  static const String baseUrl = Constants.BASE_URL;
+class AuthProvider with ChangeNotifier {
+  final AuthService _authService = AuthService();
+  final StorageService _storageService = StorageService();
+  
+  User? _currentUser;
+  bool _isLoading = false;
+  String? _errorMessage;
 
-  // Existing methods mo (hal. register, login, etc.)—i-keep mo ang original, i-add lang ang bagong ones
+  User? get currentUser => _currentUser;
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
-  /// Existing register method (sample; i-adjust mo base sa original mo)
-  Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
-    final uri = Uri.parse('$baseUrl/api/auth/register');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(userData),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
+  // Enhanced register method with detailed logging
+  Future<bool> register(Map<String, dynamic> userData) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return {'success': true, 'message': 'Registered successfully'};
-    } else {
-      final data = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': data?['message'] ?? 'Registration failed: ${response.statusCode}',
-      };
+    print('🔐 AUTH PROVIDER - Starting registration');
+    print('📤 Sending data: $userData');
+
+    try {
+      final result = await _authService.register(userData);
+      _isLoading = false;
+
+      print('📥 Auth Provider Response: $result');
+
+      if (result['success'] == true) {
+        print('✅ AUTH PROVIDER - Registration successful');
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'] ?? 'Registration failed';
+        print('❌ AUTH PROVIDER - Registration failed: $_errorMessage');
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Network error: $e';
+      print('💥 AUTH PROVIDER - Exception: $e');
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Existing login method (sample; i-adjust mo base sa original mo)
-  Future<Map<String, dynamic>> login(String studentId, String password) async {
-    final uri = Uri.parse('$baseUrl/api/auth/login');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'studentId': studentId, 'password': password}),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
+  // Enhanced login method
+  Future<bool> login(String studentId, String password) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final user = User.fromJson(data['user']);  // Assume backend returns user JSON
-      return {'success': true, 'user': user, 'studentId': data['studentId']};
-    } else {
-      final data = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': data?['message'] ?? 'Login failed: ${response.statusCode}',
-      };
+    print('🔐 AUTH PROVIDER - Starting login for: $studentId');
+
+    try {
+      final result = await _authService.login(studentId, password);
+      _isLoading = false;
+
+      print('📥 Login Response: $result');
+
+      if (result['success'] == true && result['user'] != null) {
+        _currentUser = result['user'];
+        
+        // Convert User object to Map for storage
+        final userData = {
+          'student_id': _currentUser!.userId,
+          'email': _currentUser!.email,
+          'username': _currentUser!.username,
+          'role': _currentUser!.role,
+          'is_verified': _currentUser!.isVerified,
+          'first_name': _currentUser!.firstName,
+          'last_name': _currentUser!.lastName,
+          'course': _currentUser!.course,
+          'year_level': _currentUser!.yearLevel,
+          'qr_code_data': _currentUser!.qrCodeData,
+          'qr_code_type': _currentUser!.qrCodeType,
+        };
+        
+        await _storageService.saveUserData(userData);
+        print('✅ AUTH PROVIDER - Login successful for: ${_currentUser!.email}');
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'] ?? 'Login failed';
+        print('❌ AUTH PROVIDER - Login failed: $_errorMessage');
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = 'Login error: $e';
+      print('💥 AUTH PROVIDER - Login exception: $e');
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Existing requestPasswordReset (sample)
-  Future<Map<String, dynamic>> requestPasswordReset(String studentId) async {
-    final uri = Uri.parse('$baseUrl/api/auth/forgot-password');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'studentId': studentId}),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
+  // Password reset methods
+  Future<bool> requestPasswordReset(String studentId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    if (response.statusCode == 200) {
-      return {'success': true, 'message': 'Reset link sent'};
-    } else {
-      final data = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': data?['message'] ?? 'Reset request failed',
-      };
+    try {
+      final result = await _authService.requestPasswordReset(studentId);
+      _isLoading = false;
+
+      if (result['success']) {
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 
-  /// Existing resetPassword (sample)
-  Future<Map<String, dynamic>> resetPassword(
-    String studentId, String token, String newPassword, String confirmPassword) async {
-    final uri = Uri.parse('$baseUrl/api/auth/reset-password');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'studentId': studentId,
-        'token': token,
-        'newPassword': newPassword,
-        'confirmPassword': confirmPassword,
-      }),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
+  Future<bool> resetPassword(
+    String studentId,
+    String token,
+    String newPassword,
+    String confirmPassword,
+  ) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    if (response.statusCode == 200) {
-      return {'success': true, 'message': 'Password reset successfully'};
-    } else {
-      final data = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': data?['message'] ?? 'Reset failed',
-      };
+    try {
+      final result = await _authService.resetPassword(
+        studentId,
+        token,
+        newPassword,
+        confirmPassword,
+      );
+      _isLoading = false;
+
+      if (result['success']) {
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 
-  /// NEW: Verify email OTP and generate student ID
-  Future<Map<String, dynamic>> verifyEmail(String email, String otp) async {
-    final uri = Uri.parse('$baseUrl/api/auth/verify');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'otp': otp,
-        'userType': 'student',  // Default para sa ID generation
-      }),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
+  // Email verification
+  Future<bool> verifyEmail(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      // Assume backend returns {'success': true, 'studentId': 'STU-abc123', 'user': {...}}
-      return data;
-    } else {
-      final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': errorData?['message'] ?? 'Verification failed: ${response.statusCode}',
-      };
+    try {
+      final result = await _authService.verifyEmail(email, code);
+      _isLoading = false;
+
+      if (result['success']) {
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = result['message'];
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _isLoading = false;
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
     }
   }
 
-  /// NEW: Resend OTP to email
-  Future<Map<String, dynamic>> resendOTP(String email) async {
-    final uri = Uri.parse('$baseUrl/api/auth/resend-otp');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-      }),
-    ).timeout(const Duration(seconds: Constants.TIMEOUT_SECONDS));
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      // Assume backend returns {'success': true, 'message': 'OTP resent'}
-      return data;
-    } else {
-      final errorData = jsonDecode(response.body) as Map<String, dynamic>?;
-      return {
-        'success': false,
-        'message': errorData?['message'] ?? 'Resend failed: ${response.statusCode}',
-      };
+  Future<void> loadUserData() async {
+    final userData = await _storageService.getUserData();
+    if (userData != null) {
+      _currentUser = User.fromJson(userData);
+      notifyListeners();
     }
+  }
+
+  Future<void> logout() async {
+    _currentUser = null;
+    await _storageService.clearUserData();
+    notifyListeners();
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
   }
 }

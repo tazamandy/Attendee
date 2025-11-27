@@ -1,36 +1,58 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-
+import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'provider/auth_provider.dart';
+import 'screens/register_screen.dart';
+import 'screens/forgot_screen.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/student_dashboard.dart';
+import 'screens/admin_dashboard.dart';
+import 'screens/my_qr_code_screen.dart';
+import 'screens/reset_password_screen.dart';
+import 'screens/verify_user_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load(fileName: ".env");
-  } catch (e) {
-    print('Warning: Could not load .env file: $e');
-  }
+
+void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AuthProvider())],
-      child: MaterialApp(
-        title: 'Campus Connect',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          useMaterial3: true,
+      providers: [
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider(),
         ),
-        home: const _AuthWrapper(),
+      ],
+      child: MaterialApp(
+        title: 'Attendee App',
+        theme: ThemeData(primarySwatch: Colors.blue),
         debugShowCheckedModeBanner: false,
+
+        // 🔥 IMPORTANT: Add routes here
+        routes: {
+          '/': (context) => const _AuthWrapper(),
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/forgot': (context) => const ForgotPasswordScreen(),
+          '/dashboard': (context) => const DashboardScreen(),
+          '/student_dashboard': (context) => const StudentDashboard(),
+          '/admin_dashboard': (context) => const AdminDashboard(),
+          '/qr': (context) => const MyQRCodeScreen(),
+          '/reset_password': (context) => const ResetPasswordScreen(),
+          '/verify': (context) => VerifyUserScreen(tempUserId: 'TEMP_USER_ID'),
+
+        },
+
+        // optional pero maganda meron:
+        onUnknownRoute: (settings) {
+          return MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+          );
+        },
       ),
     );
   }
@@ -43,35 +65,7 @@ class _AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        if (!authProvider.isInitialized) {
-          return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.school,
-                      size: 50,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Initializing...'),
-                ],
-              ),
-            ),
-          );
-        }
-
+        // TEMPORARY
         return const LoginScreen();
       },
     );
