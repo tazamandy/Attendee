@@ -2,6 +2,7 @@
 class User {
   final String userId;
   final String email;
+  final String studentId;
   final String username;
   final String role;
   final bool isVerified;
@@ -12,9 +13,11 @@ class User {
   final String? qrCodeData;
   final String? qrCodeType;
 
+
   User({
     required this.userId,
     required this.email,
+    required this.studentId,
     required this.username,
     required this.role,
     required this.isVerified,
@@ -33,6 +36,7 @@ class User {
     return User(
       userId: json['user_id'] ?? json['userId'] ?? '',
       email: json['email'] ?? '',
+      studentId: studentInfo['student_id'] ?? json['student_id'] ?? '',
       username: json['username'] ?? '',
       role: json['role'] ?? 'student',
       isVerified: json['is_verified'] ?? false,

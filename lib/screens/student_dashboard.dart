@@ -3,6 +3,10 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../screens/login_screen.dart';
 import 'qr_code_dialog.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'dart:convert';
+
+
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({Key? key}) : super(key: key);
