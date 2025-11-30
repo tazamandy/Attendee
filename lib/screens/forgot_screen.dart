@@ -356,7 +356,7 @@ Widget _buildVerifyCodeButton(Size size) {
       
       if (success && mounted) {
      
-        final responseData = authProvider.currentUser; // Or get from response
+        final responseData = authProvider.currentUser;
         setState(() {
           _isLoading = false;
           _isCodeSent = true;

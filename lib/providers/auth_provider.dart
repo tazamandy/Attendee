@@ -12,13 +12,15 @@ class AuthProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _resetToken;
-  String? _resetStudentId; // Store student ID associated with reset
+  String? _resetStudentId;
+  Map<String, dynamic>? _lastLoginData; // Added missing property
 
   User? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get resetToken => _resetToken;
   String? get resetStudentId => _resetStudentId;
+  Map<String, dynamic>? get lastLoginData => _lastLoginData; // Added missing getter
 
   // Enhanced register method
   Future<bool> register(Map<String, dynamic> userData) async {
@@ -81,7 +83,16 @@ class AuthProvider with ChangeNotifier {
         };
         
         await _storageService.saveUserData(userData);
+        
+        // Initialize lastLoginData to prevent null errors
+        _lastLoginData = {
+          'timestamp': DateTime.now().toIso8601String(),
+          'student_id': studentId,
+          'login_time': DateTime.now().millisecondsSinceEpoch,
+        };
+        
         print('✅ AUTH PROVIDER - Login successful for: ${_currentUser!.email}');
+        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Login failed';
@@ -161,6 +172,7 @@ class AuthProvider with ChangeNotifier {
         print('📧 Email: ${result['email']}');
         print('🎫 Student ID: ${result['student_id']}');
         
+        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Verification failed';
@@ -299,12 +311,21 @@ class AuthProvider with ChangeNotifier {
     final userData = await _storageService.getUserData();
     if (userData != null) {
       _currentUser = User.fromJson(userData);
+      
+      // Initialize lastLoginData when loading user data
+      _lastLoginData = {
+        'timestamp': DateTime.now().toIso8601String(),
+        'student_id': _currentUser?.userId ?? '',
+        'login_time': DateTime.now().millisecondsSinceEpoch,
+      };
+      
       notifyListeners();
     }
   }
 
   Future<void> logout() async {
     _currentUser = null;
+    _lastLoginData = null;
     _clearResetData();
     await _storageService.clearUserData();
     notifyListeners();
@@ -319,6 +340,12 @@ class AuthProvider with ChangeNotifier {
     _clearResetData();
   }
 
+  // Method to update last login data
+  void updateLastLoginData(Map<String, dynamic> data) {
+    _lastLoginData = data;
+    notifyListeners();
+  }
+
   // Enhanced debug method
   void debugResetToken() {
     print('🔍 DEBUG - Reset Token: $_resetToken');
@@ -326,6 +353,7 @@ class AuthProvider with ChangeNotifier {
     print('🔍 DEBUG - Reset Token Length: ${_resetToken?.length}');
     print('🔍 DEBUG - Reset Student ID: $_resetStudentId');
     print('🔍 DEBUG - Has Token: ${_resetToken != null && _resetToken!.isNotEmpty}');
+    print('🔍 DEBUG - Last Login Data: $_lastLoginData');
   }
 
   void _setLoading(bool loading) {
@@ -333,10 +361,12 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
- 
   bool isResetFlowReady() {
     return _resetToken != null && 
            _resetToken!.isNotEmpty && 
            _resetStudentId != null;
   }
+
+  // Helper method to check if user has last login data
+  bool get hasLastLoginData => _lastLoginData != null;
 }
