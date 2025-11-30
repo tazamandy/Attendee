@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../provider/auth_provider.dart';
+import '../providers/auth_provider.dart';
 
 class QrCodeScreen extends StatelessWidget {
   const QrCodeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
+    final user = Provider.of<AuthProvider>(context).currentUser;
     
     return Scaffold(
       appBar: AppBar(
@@ -47,7 +47,7 @@ class QrCodeScreen extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  if (user?.qrCodeData != null && user!.qrCodeData!.isNotEmpty)
+                  if (_hasQRCode(user))
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -55,7 +55,7 @@ class QrCodeScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Image.network(
-                        user.qrCodeData!,
+                        _getQRCodeData(user),
                         height: 250,
                         width: 250,
                         errorBuilder: (context, error, stackTrace) {
@@ -144,11 +144,11 @@ class QrCodeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoRow('Name', '${user?.firstName} ${user?.lastName}'),
-                  _buildInfoRow('Student ID', user?.userId ?? 'N/A'),
-                  _buildInfoRow('Course', user?.course ?? 'N/A'),
-                  _buildInfoRow('Year Level', user?.yearLevel ?? 'N/A'),
-                  _buildInfoRow('Role', user?.qrCodeType ?? 'Student'),
+                  _buildInfoRow('Name', _getUserName(user)),
+                  _buildInfoRow('Student ID', _getStudentId(user)),
+                  _buildInfoRow('Course', _getCourse(user)),
+                  _buildInfoRow('Year Level', _getYearLevel(user)),
+                  _buildInfoRow('Role', 'Student'),
                 ],
               ),
             ),
@@ -224,6 +224,91 @@ class QrCodeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Helper methods for safe property access
+  bool _hasQRCode(dynamic user) {
+    if (user == null) return false;
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final qrCodeData = dynamicUser.qrCodeData;
+      return qrCodeData != null && qrCodeData.toString().isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String _getQRCodeData(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.qrCodeData?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getUserName(dynamic user) {
+    if (user == null) return 'N/A';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        return '$firstName $lastName'.trim();
+      }
+      
+      // Fallback to username
+      return dynamicUser.username ?? 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getStudentId(dynamic user) {
+    if (user == null) return 'N/A';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.student_id?.toString() ?? 
+             dynamicUser.studentId?.toString() ?? 
+             dynamicUser.id?.toString() ?? 
+             dynamicUser.userId?.toString() ??
+             'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getCourse(dynamic user) {
+    if (user == null) return 'N/A';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.course ?? 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getYearLevel(dynamic user) {
+    if (user == null) return 'N/A';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final yearLevel = dynamicUser.yearLevel ?? dynamicUser.year_level;
+      
+      if (yearLevel != null) {
+        return 'Year $yearLevel';
+      }
+      return 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
   }
 
   Widget _buildInfoRow(String label, String value) {

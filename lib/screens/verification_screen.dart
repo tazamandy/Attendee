@@ -1,202 +1,194 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../provider/auth_provider.dart';
-import 'dashboard_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class VerificationScreen extends StatefulWidget {
-  final String email;
+class AuthProvider with ChangeNotifier {
+  String? _token;
+  String? _userEmail;
+  bool _isAuthenticated = false;
 
-  const VerificationScreen({super.key, required this.email});
+  bool get isAuthenticated => _isAuthenticated;
+  String? get token => _token;
+  String? get userEmail => _userEmail;
 
-  @override
-  State<VerificationScreen> createState() => _VerificationScreenState();
-}
+  // Base URL - PALITAN MO ITO NG IYONG TUNAY NA API URL
+  final String baseUrl = 'https://your-api-url.com/api';
 
-class _VerificationScreenState extends State<VerificationScreen> {
-  final _verificationCodeController = TextEditingController();
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _verificationCodeController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _verifyEmail() async {
-    final code = _verificationCodeController.text.trim();
-
-    if (code.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter verification code')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
+  // Login method
+  Future<void> login(String email, String password) async {
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.verifyEmail(widget.email, code);
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+        }),
+      );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Email verified successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-        );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        _token = data['token'];
+        _userEmail = email;
+        _isAuthenticated = true;
+        notifyListeners();
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Login failed');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Verification failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (e.toString().contains('Exception:')) {
+        rethrow;
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      throw Exception('Network error: Unable to connect to server');
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Verify Email'),
-        elevation: 0,
-        backgroundColor: Colors.blue,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 40),
-              // Email verification icon
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.mail_outline,
-                  size: 50,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 32),
-              const Text(
-                'Verify Your Email',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'We sent a verification code to:',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                widget.email,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-              const SizedBox(height: 40),
-              TextField(
-                controller: _verificationCodeController,
-                decoration: InputDecoration(
-                  labelText: 'Verification Code',
-                  hintText: 'Enter 6-digit code',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  prefixIcon: const Icon(Icons.security),
-                  contentPadding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 16,
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _verifyEmail,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                          ),
-                        )
-                      : const Text(
-                          'Verify',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: RichText(
-                  text: TextSpan(
-                    text: "Didn't receive code? ",
-                    style: TextStyle(color: Colors.grey.shade600),
-                    children: const [
-                      TextSpan(
-                        text: 'Resend',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  // Register method
+  Future<void> register(String email, String password, String name) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'password': password,
+          'name': name,
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Registration successful
+        notifyListeners();
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Registration failed');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Network error: Unable to connect to server');
+    }
+  }
+
+  // VERIFY EMAIL METHOD - KAILANGAN ITO
+  Future<void> verifyEmail(String email, String code) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/verify-email'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+          'code': code,
+          'verification_code': code, // Alternative key name
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        // Set authentication after successful verification
+        _token = data['token'] ?? '';
+        _userEmail = email;
+        _isAuthenticated = true;
+        
+        notifyListeners();
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Invalid verification code');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Network error: Unable to verify email');
+    }
+  }
+
+  // RESEND VERIFICATION CODE METHOD - KAILANGAN DIN ITO
+  Future<void> resendVerificationCode(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/resend-verification'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Successfully resent
+        notifyListeners();
+      } else {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to resend code');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Network error: Unable to resend code');
+    }
+  }
+
+  // Forgot Password method
+  Future<void> forgotPassword(String email) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'email': email,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to send reset link');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Network error: Unable to process request');
+    }
+  }
+
+  // Reset Password method
+  Future<void> resetPassword(String token, String newPassword) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'token': token,
+          'password': newPassword,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        final errorData = json.decode(response.body);
+        throw Exception(errorData['message'] ?? 'Failed to reset password');
+      }
+    } catch (e) {
+      if (e.toString().contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Network error: Unable to reset password');
+    }
+  }
+
+  // Logout method
+  Future<void> logout() async {
+    _token = null;
+    _userEmail = null;
+    _isAuthenticated = false;
+    notifyListeners();
+  }
+
+  // Check if user is authenticated
+  bool checkAuth() {
+    return _isAuthenticated && _token != null;
   }
 }

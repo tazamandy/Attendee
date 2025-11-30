@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../provider/auth_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../profile_screen.dart';
 import '../qr_code_screen.dart';
-import '../events_screen.dart';
+// Remove EventsScreen import since it doesn't exist yet
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
+    final user = Provider.of<AuthProvider>(context).currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -53,7 +53,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${user?.firstName} ${user?.lastName}!',
+                    _getUserName(user),
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -65,10 +65,12 @@ class DashboardScreen extends StatelessWidget {
                     spacing: 12,
                     runSpacing: 8,
                     children: [
-                      _buildInfoChip('🎓 ${user?.course}'),
-                      _buildInfoChip('📚 ${user?.yearLevel}'),
+                      if (_getCourse(user).isNotEmpty)
+                        _buildInfoChip('🎓 ${_getCourse(user)}'),
+                      if (_getYearLevel(user).isNotEmpty)
+                        _buildInfoChip('📚 ${_getYearLevel(user)}'),
                       _buildInfoChip(
-                        '👤 ${(user?.role ?? 'N/A').toUpperCase()}',
+                        '👤 ${_getRole(user).toUpperCase()}',
                       ),
                     ],
                   ),
@@ -109,12 +111,7 @@ class DashboardScreen extends StatelessWidget {
                     Colors.green,
                     'Browse campus events',
                     () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const EventsScreen(),
-                        ),
-                      );
+                      _showComingSoon(context, message: 'Events feature coming soon!');
                     },
                   ),
                   _buildDashboardItem(
@@ -131,7 +128,7 @@ class DashboardScreen extends StatelessWidget {
                       );
                     },
                   ),
-                  if (user?.role == 'admin' || user?.role == 'superadmin')
+                  if (_isAdmin(user))
                     _buildDashboardItem(
                       'Admin Panel',
                       Icons.admin_panel_settings_rounded,
@@ -148,6 +145,71 @@ class DashboardScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // Safe property access methods
+  String _getUserName(dynamic user) {
+    if (user == null) return 'User!';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        return '$firstName $lastName'.trim() + '!';
+      }
+      
+      return 'User!';
+    } catch (e) {
+      return 'User!';
+    }
+  }
+
+  String _getCourse(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.course?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getYearLevel(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final yearLevel = dynamicUser.yearLevel ?? dynamicUser.year_level;
+      return yearLevel?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getRole(dynamic user) {
+    if (user == null) return 'student';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.role?.toString() ?? 'student';
+    } catch (e) {
+      return 'student';
+    }
+  }
+
+  bool _isAdmin(dynamic user) {
+    if (user == null) return false;
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final role = dynamicUser.role?.toString().toLowerCase() ?? '';
+      return role == 'admin' || role == 'superadmin';
+    } catch (e) {
+      return false;
+    }
   }
 
   Widget _buildInfoChip(String text) {
@@ -232,6 +294,12 @@ class DashboardScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
               Provider.of<AuthProvider>(context, listen: false).logout();
+              // Navigate to login screen or handle logout navigation
+              Navigator.pushNamedAndRemoveUntil(
+                context, 
+                '/login', 
+                (route) => false
+              );
             },
             child: const Text('Logout', style: TextStyle(color: Colors.red)),
           ),
@@ -240,9 +308,12 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Admin panel coming soon!')));
+  void _showComingSoon(BuildContext context, {String message = 'Coming soon!'}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+      )
+    );
   }
 }

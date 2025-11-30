@@ -1,6 +1,7 @@
+// forgot_password_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+import '../providers/auth_provider.dart' as auth_provider; // Add alias here
 import 'verify_email_screen.dart'; 
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<auth_provider.AuthProvider>(context); // Use alias here
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
@@ -92,7 +93,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildForgotPasswordCard(AuthProvider authProvider, Size size) {
+  Widget _buildForgotPasswordCard(auth_provider.AuthProvider authProvider, Size size) { // Use alias here
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -204,7 +205,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
-  Widget _buildRequestCodeButton(AuthProvider authProvider, Size size) {
+  Widget _buildRequestCodeButton(auth_provider.AuthProvider authProvider, Size size) { // Use alias here
     final isLoading = _isLoading || authProvider.isLoading;
 
     return SizedBox(
@@ -270,41 +271,41 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
- // In ForgotPasswordScreen's _buildVerifyCodeButton
-Widget _buildVerifyCodeButton(Size size) {
-  return SizedBox(
-    width: double.infinity,
-    height: 50,
-    child: ElevatedButton(
-      onPressed: () {
-        print('🎯 FORGOT PASSWORD - Navigating to VerifyEmailScreen');
-        print('   Student ID: ${_studentIdController.text.trim()}');
-        print('   Is Password Reset: true');
-        
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => VerifyEmailScreen(
-              studentId: _studentIdController.text.trim(), // ✅ Make sure this is passed
-              email: _userEmail ?? 'user@example.com',
-              isPasswordReset: true, // ✅ Make sure this is true
+  Widget _buildVerifyCodeButton(Size size) {
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        onPressed: () {
+          print('🎯 FORGOT PASSWORD - Navigating to VerifyEmailScreen');
+          print('   Student ID: ${_studentIdController.text.trim()}');
+          print('   Is Password Reset: true');
+          
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => VerifyEmailScreen(
+                studentId: _studentIdController.text.trim(),
+                email: _userEmail ?? 'user@example.com',
+                isPasswordReset: true,
+              ),
             ),
+          );
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF60B5FF),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        );
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF60B5FF),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Text(
+          'ENTER VERIFICATION CODE',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      child: const Text(
-        'ENTER VERIFICATION CODE',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    ),
-  );
-}
+    );
+  }
+
   Widget _buildBackToLoginButton(Size size) {
     return SizedBox(
       width: double.infinity,
@@ -343,60 +344,57 @@ Widget _buildVerifyCodeButton(Size size) {
   }
 
   Future<void> _requestResetCode() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() => _isLoading = true);
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
 
-    try {
-      print('🔐 FORGOT PASSWORD - Requesting reset code for Student ID: ${_studentIdController.text.trim()}');
-      
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final success = await authProvider.requestPasswordReset(_studentIdController.text.trim());
-      
-      print('📥 FORGOT PASSWORD - Response success: $success');
-      
-      if (success && mounted) {
-        // ✅ FIXED: Use the actual email from backend response
-        // The backend should return the actual user email in the response
-        final responseData = authProvider.currentUser; // Or get from response
-        setState(() {
-          _isLoading = false;
-          _isCodeSent = true;
-          // Don't generate fake email - backend should provide the real one
-          _userEmail = 'Check your registered email'; // Generic message
-        });
+      try {
+        print('🔐 FORGOT PASSWORD - Requesting reset code for Student ID: ${_studentIdController.text.trim()}');
         
-        print('✅ FORGOT PASSWORD - Code sent successfully');
+        final authProvider = Provider.of<auth_provider.AuthProvider>(context, listen: false); // Use alias here
+        final success = await authProvider.requestPasswordReset(_studentIdController.text.trim());
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Verification code sent to your registered email!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
+        print('🔐 FORGOT PASSWORD - Response success: $success');
+        
+        if (success && mounted) {
+          setState(() {
+            _isLoading = false;
+            _isCodeSent = true;
+            _userEmail = 'Check your registered email';
+          });
+          
+          print('✅ FORGOT PASSWORD - Code sent successfully');
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verification code sent to your registered email!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          setState(() => _isLoading = false);
+          print('❌ FORGOT PASSWORD - Failed to send code: ${authProvider.errorMessage}');
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to send code: ${authProvider.errorMessage ?? "Unknown error"}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } catch (e) {
         setState(() => _isLoading = false);
-        print('❌ FORGOT PASSWORD - Failed to send code: ${authProvider.errorMessage}');
+        print('❌ FORGOT PASSWORD - Exception: $e');
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to send code: ${authProvider.errorMessage ?? "Unknown error"}'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      print('💥 FORGOT PASSWORD - Exception: $e');
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
     }
   }
-}
+
   @override
   void dispose() {
     _studentIdController.dispose();

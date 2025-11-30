@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../provider/auth_provider.dart';
+import '../providers/auth_provider.dart';
 import 'screens/my_qr_code_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -8,12 +8,12 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = Provider.of<AuthProvider>(context).user;
+    final user = Provider.of<AuthProvider>(context).currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Profile')),
+      appBar: AppBar(title: const Text('Profile')),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -25,22 +25,22 @@ class ProfileScreen extends StatelessWidget {
                     radius: 50,
                     backgroundColor: Colors.blue,
                     child: Text(
-                      '${(user?.firstName ?? '?')[0]}${(user?.lastName ?? '?')[0]}',
-                      style: TextStyle(fontSize: 30, color: Colors.white),
+                      _getUserInitials(user),
+                      style: const TextStyle(fontSize: 30, color: Colors.white),
                     ),
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   Text(
-                    '${user?.firstName} ${user?.lastName}',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    _getUserName(user),
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    user?.email ?? '',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    _getUserEmail(user),
+                    style: const TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
-                    onPressed: user?.qrCodeData != null
+                    onPressed: _hasQRCode(user)
                         ? () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
@@ -55,17 +55,17 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
 
             // Personal Information
-            Text(
+            const Text(
               'Personal Information',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             _buildInfoCard(context, user),
 
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
 
             // Account Status
             _buildStatusCard(context, user),
@@ -75,64 +75,192 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoCard(BuildContext context, user) {
+  String _getUserInitials(dynamic user) {
+    if (user == null) return '?';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      
+      if (firstName.isNotEmpty && lastName.isNotEmpty) {
+        return '${firstName[0]}${lastName[0]}';
+      } else if (firstName.isNotEmpty) {
+        return firstName[0];
+      } else if (lastName.isNotEmpty) {
+        return lastName[0];
+      }
+      
+      // Fallback to username
+      final username = dynamicUser.username ?? '';
+      if (username.isNotEmpty) {
+        return username[0];
+      }
+      
+      return '?';
+    } catch (e) {
+      return '?';
+    }
+  }
+
+  String _getUserName(dynamic user) {
+    if (user == null) return 'Unknown User';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      
+      if (firstName.isNotEmpty || lastName.isNotEmpty) {
+        return '$firstName $lastName'.trim();
+      }
+      
+      // Fallback to username
+      return dynamicUser.username ?? 'Unknown User';
+    } catch (e) {
+      return 'Unknown User';
+    }
+  }
+
+  String _getUserEmail(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.email ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  bool _hasQRCode(dynamic user) {
+    if (user == null) return false;
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final qrCodeData = dynamicUser.qrCodeData;
+      return qrCodeData != null && qrCodeData.toString().isNotEmpty;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Widget _buildInfoCard(BuildContext context, dynamic user) {
     return Card(
       elevation: 4,
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildInfoRow('User ID', user?.userId ?? ''),
-            _buildInfoRow('Username', user?.username ?? ''),
-            _buildInfoRow('Course', user?.course ?? ''),
-            _buildInfoRow('Year Level', user?.yearLevel ?? ''),
-            _buildInfoRow('Role', user?.role ?? ''),
+            _buildInfoRow('User ID', _getStudentId(user)),
+            _buildInfoRow('Username', _getUsername(user)),
+            _buildInfoRow('Course', _getCourse(user)),
+            _buildInfoRow('Year Level', _getYearLevel(user)),
+            _buildInfoRow('Role', _getRole(user)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildStatusCard(BuildContext context, user) {
+  String _getStudentId(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.student_id?.toString() ?? 
+             dynamicUser.studentId?.toString() ?? 
+             dynamicUser.id?.toString() ?? 
+             dynamicUser.userId?.toString() ??
+             '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getUsername(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.username ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getCourse(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.course ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getYearLevel(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      final yearLevel = dynamicUser.yearLevel ?? dynamicUser.year_level;
+      return yearLevel?.toString() ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getRole(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.role ?? 'Student';
+    } catch (e) {
+      return 'Student';
+    }
+  }
+
+  Widget _buildStatusCard(BuildContext context, dynamic user) {
+    final isVerified = _isUserVerified(user);
+    
     return Card(
       elevation: 4,
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             Icon(
-              user?.isVerified == true ? Icons.verified : Icons.pending,
-              color: user?.isVerified == true ? Colors.green : Colors.orange,
+              isVerified ? Icons.verified : Icons.pending,
+              color: isVerified ? Colors.green : Colors.orange,
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    user?.isVerified == true
-                        ? 'Verified Account'
-                        : 'Pending Verification',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    isVerified ? 'Verified Account' : 'Pending Verification',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    user?.isVerified == true
-                        ? 'Your account has been verified'
-                        : 'Please verify your email address',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    isVerified ? 'Your account has been verified' : 'Please verify your email address',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
             ),
-            if (user?.isVerified != true)
+            if (!isVerified)
               TextButton(
                 onPressed: () {
                   // Implement resend verification
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Verification email sent!')),
+                    const SnackBar(content: Text('Verification email sent!')),
                   );
                 },
-                child: Text('Resend'),
+                child: const Text('Resend'),
               ),
           ],
         ),
@@ -140,14 +268,27 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  bool _isUserVerified(dynamic user) {
+    if (user == null) return false;
+    
+    try {
+      final dynamicUser = user as dynamic;
+      return dynamicUser.isVerified == true || 
+             dynamicUser.is_verified == true ||
+             dynamicUser.verified == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Widget _buildInfoRow(String label, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
           Expanded(
             flex: 2,
-            child: Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
             flex: 3,

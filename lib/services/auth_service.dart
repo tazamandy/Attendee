@@ -1,5 +1,5 @@
 import './api_service.dart';
-import '../models/auth_model.dart';
+import '../model/auth_models.dart';
 
 class AuthService {
   final ApiService _apiService = ApiService();
@@ -37,7 +37,7 @@ class AuthService {
       };
     } catch (e) {
       print('💥 AUTH SERVICE - Registration error: $e');
-      return _handleError(e);
+      return _handleRegistrationError(e);
     }
   }
 
@@ -52,12 +52,12 @@ class AuthService {
 
       print('📥 Login API Response: $response');
 
-      // Enhanced user data validation
+      // Enhanced user data validation - return Map instead of User object
       if (_hasUserData(response)) {
         return {
           'success': true,
           'message': response['message'] ?? 'Login successful',
-          'user': User.fromJson(response),
+          'user': response, // Return the raw user data instead of User object
         };
       } else {
         return {
@@ -144,14 +144,19 @@ class AuthService {
     }
   }
 
-  Future<User> getUserProfile(String studentId) async {
+  Future<Map<String, dynamic>> getUserProfile(String studentId) async {
     try {
       print('👤 AUTH SERVICE - Fetching user profile for: $studentId');
       final response = await _apiService.get('$_userProfileEndpoint/$studentId');
-      return User.fromJson(response);
+      
+      // Return Map instead of User object
+      return {
+        'success': true,
+        'user': response,
+      };
     } catch (e) {
       print('💥 AUTH SERVICE - Get user profile error: $e');
-      rethrow; // Re-throw since this returns User directly
+      return _handleError(e);
     }
   }
 
@@ -292,7 +297,34 @@ class AuthService {
            response['student_id'].toString().isNotEmpty;
   }
 
-  /// Standardized error handling
+  /// Specialized error handling for registration
+  Map<String, dynamic> _handleRegistrationError(dynamic error) {
+    String errorMessage = error.toString();
+    
+    // Handle specific registration errors
+    if (errorMessage.contains('Email already registered and pending verification')) {
+      errorMessage = 'Email already registered and pending verification. Please check your email or wait for the verification to expire.';
+    } else if (errorMessage.contains('Email already exists')) {
+      errorMessage = 'Email is already registered. Please use a different email or try to login.';
+    } else if (errorMessage.contains('Student ID already exists')) {
+      errorMessage = 'Student ID is already registered. Please use a different Student ID.';
+    } else if (errorMessage.contains('Connection') || errorMessage.contains('Network')) {
+      errorMessage = 'Network connection error. Please check your internet connection.';
+    } else if (errorMessage.contains('Timeout')) {
+      errorMessage = 'Request timeout. Please try again.';
+    } else if (errorMessage.contains('401') || errorMessage.contains('Unauthorized')) {
+      errorMessage = 'Authentication failed. Please check your credentials.';
+    } else if (errorMessage.contains('500') || errorMessage.contains('Internal Server')) {
+      errorMessage = 'Server error. Please try again later.';
+    }
+
+    return {
+      'success': false,
+      'message': errorMessage,
+    };
+  }
+
+  /// Standardized error handling for other operations
   Map<String, dynamic> _handleError(dynamic error) {
     String errorMessage = error.toString();
     

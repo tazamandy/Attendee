@@ -2,28 +2,46 @@
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
-import '../models/auth_model.dart';
+import '../config/constants.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
   
-  User? _currentUser;
+  Map<String, dynamic>? _currentUser;
   bool _isLoading = false;
   String? _errorMessage;
   String? _resetToken;
-  String? _resetStudentId; // Store student ID associated with reset
+  String? _resetStudentId;
+  String? _pendingEmail; // NEW: Store email for verification flow
+  String? _pendingStudentId; // NEW: Store student ID for verification flow
 
-  User? get currentUser => _currentUser;
+  Map<String, dynamic>? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get resetToken => _resetToken;
   String? get resetStudentId => _resetStudentId;
+  String? get pendingEmail => _pendingEmail; // NEW: Getter for pending email
+  String? get pendingStudentId => _pendingStudentId; // NEW: Getter for pending student ID
 
-  // Enhanced register method
-  Future<bool> register(Map<String, dynamic> userData) async {
+  // Helper getters for user properties
+  String? get userId => _currentUser?['student_id'] ?? _currentUser?['userId'];
+  String? get email => _currentUser?['email'];
+  String? get username => _currentUser?['username'] ?? _currentUser?['first_name'];
+  String? get role => _currentUser?['role'];
+  bool get isVerified => _currentUser?['is_verified'] ?? _currentUser?['verified'] ?? false;
+  String? get firstName => _currentUser?['first_name'] ?? _currentUser?['firstName'];
+  String? get lastName => _currentUser?['last_name'] ?? _currentUser?['lastName'];
+  String? get course => _currentUser?['course'];
+  String? get yearLevel => _currentUser?['year_level']?.toString() ?? _currentUser?['yearLevel']?.toString();
+  String? get qrCodeData => _currentUser?['qr_code_data'] ?? _currentUser?['qrCodeData'];
+  String? get qrCodeType => _currentUser?['qr_code_type'] ?? _currentUser?['qrCodeType'];
+
+  Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
     _setLoading(true);
     _errorMessage = null;
+    _pendingEmail = null;
+    _pendingStudentId = null;
     
     print('🔐 AUTH PROVIDER - Starting registration');
     print('📤 Sending data: $userData');
@@ -33,24 +51,56 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
 
       print('📥 Auth Provider Response: $result');
+      print('🎯 REGISTRATION RESULT: ${result['success']}');
 
-      if (result['success'] == true) {
-        print('✅ AUTH PROVIDER - Registration successful');
-        return true;
+      // ENHANCED: Check for successful registration that requires verification
+      if (result['success'] == true || _isVerificationRequired(result)) {
+        print('✅ AUTH PROVIDER - Registration successful, verification required');
+        
+        // Store pending registration data for verification flow
+        _pendingEmail = userData['email'];
+        _pendingStudentId = userData['student_id'];
+        
+        return {
+          'success': true,
+          'requiresVerification': true,
+          'message': result['message'] ?? 'Registration successful. Please check your email for verification.',
+          'email': _pendingEmail,
+          'studentId': _pendingStudentId,
+        };
       } else {
         _errorMessage = result['message'] ?? 'Registration failed';
         print('❌ AUTH PROVIDER - Registration failed: $_errorMessage');
-        return false;
+        
+        return {
+          'success': false,
+          'requiresVerification': false,
+          'message': _errorMessage,
+        };
       }
     } catch (e) {
       _setLoading(false);
-      _errorMessage = 'Network error: $e';
-      print('💥 AUTH PROVIDER - Exception: $e');
-      return false;
+      _errorMessage = 'Registration error: $e';
+      print('💥 AUTH PROVIDER - Registration exception: $e');
+      
+      return {
+        'success': false,
+        'requiresVerification': false,
+        'message': _errorMessage,
+      };
     }
   }
 
-  // Enhanced login method
+  // NEW: Helper method to check if verification is required
+  bool _isVerificationRequired(Map<String, dynamic> result) {
+    final message = result['message']?.toString().toLowerCase() ?? '';
+    return message.contains('check your email') ||
+           message.contains('verification code') ||
+           message.contains('verify your email') ||
+           message.contains('pending verification');
+  }
+
+  // UPDATED: Login method remains the same
   Future<bool> login(String studentId, String password) async {
     _setLoading(true);
     _errorMessage = null;
@@ -64,24 +114,14 @@ class AuthProvider with ChangeNotifier {
       print('📥 Login Response: $result');
 
       if (result['success'] == true && result['user'] != null) {
-        _currentUser = result['user'];
+        _currentUser = _extractUserData(result['user']);
         
-        final userData = {
-          'student_id': _currentUser!.userId,
-          'email': _currentUser!.email,
-          'username': _currentUser!.username,
-          'role': _currentUser!.role,
-          'is_verified': _currentUser!.isVerified,
-          'first_name': _currentUser!.firstName,
-          'last_name': _currentUser!.lastName,
-          'course': _currentUser!.course,
-          'year_level': _currentUser!.yearLevel,
-          'qr_code_data': _currentUser!.qrCodeData,
-          'qr_code_type': _currentUser!.qrCodeType,
-        };
+        // Save user data to storage
+        await _storageService.saveUserData(_currentUser!);
         
-        await _storageService.saveUserData(userData);
-        print('✅ AUTH PROVIDER - Login successful for: ${_currentUser!.email}');
+        print('✅ AUTH PROVIDER - Login successful for: ${_currentUser?['email']}');
+        print('👤 User data saved: $_currentUser');
+        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Login failed';
@@ -96,11 +136,56 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ✅ FIXED: Enhanced password reset request method
+  // NEW: Method to verify email after registration
+  Future<bool> verifyRegistrationEmail(String email, String code) async {
+    _setLoading(true);
+    _errorMessage = null;
+
+    print('🔐 AUTH PROVIDER - Verifying registration email: $email');
+
+    try {
+      final result = await _authService.verifyEmail(email, code);
+      _setLoading(false);
+
+      print('📥 Verify Registration Email Response: $result');
+
+      if (result['success'] == true) {
+        print('✅ AUTH PROVIDER - Registration email verification successful');
+        
+        // Clear pending data after successful verification
+        _pendingEmail = null;
+        _pendingStudentId = null;
+        
+        return true;
+      } else {
+        _errorMessage = result['message'] ?? 'Email verification failed';
+        print('❌ AUTH PROVIDER - Registration email verification failed: $_errorMessage');
+        return false;
+      }
+    } catch (e) {
+      _setLoading(false);
+      _errorMessage = e.toString();
+      print('💥 AUTH PROVIDER - Registration email verification exception: $e');
+      return false;
+    }
+  }
+
+  // NEW: Method to clear pending registration
+  void clearPendingRegistration() {
+    _pendingEmail = null;
+    _pendingStudentId = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  // NEW: Check if there's a pending registration that needs verification
+  bool get hasPendingVerification => _pendingEmail != null && _pendingStudentId != null;
+
+  // Rest of your existing methods remain the same...
   Future<bool> requestPasswordReset(String studentId) async {
     _setLoading(true);
     _errorMessage = null;
-    _resetToken = null; // Clear previous token
+    _resetToken = null;
     _resetStudentId = null;
 
     print('🔐 AUTH PROVIDER - Requesting password reset for: $studentId');
@@ -130,7 +215,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ✅ FIXED: Enhanced reset code verification with better token handling
   Future<bool> verifyResetCode(String studentId, String code) async {
     _setLoading(true);
     _errorMessage = null;
@@ -146,7 +230,6 @@ class AuthProvider with ChangeNotifier {
       print('📥 Verify Reset Code Provider Response: $result');
 
       if (result['success'] == true) {
-        // ✅ FIXED: Multiple ways to extract token
         _resetToken = _extractToken(result);
         _resetStudentId = studentId;
         
@@ -161,6 +244,7 @@ class AuthProvider with ChangeNotifier {
         print('📧 Email: ${result['email']}');
         print('🎫 Student ID: ${result['student_id']}');
         
+        notifyListeners();
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Verification failed';
@@ -175,7 +259,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ✅ FIXED: Enhanced reset password with validation
   Future<bool> resetPassword(
     String studentId,
     String token,
@@ -188,7 +271,6 @@ class AuthProvider with ChangeNotifier {
     print('🔐 AUTH PROVIDER - Resetting password');
     print('📤 Student ID: $studentId, Token: $token');
 
-    // Validate token presence
     if (token.isEmpty) {
       _setLoading(false);
       _errorMessage = 'Reset token is required';
@@ -196,7 +278,6 @@ class AuthProvider with ChangeNotifier {
       return false;
     }
 
-    // Validate password match
     if (newPassword != confirmPassword) {
       _setLoading(false);
       _errorMessage = 'Passwords do not match';
@@ -217,7 +298,6 @@ class AuthProvider with ChangeNotifier {
 
       if (result['success'] == true) {
         print('✅ AUTH PROVIDER - Password reset successful');
-        // Clear reset data after successful reset
         _clearResetData();
         return true;
       } else {
@@ -233,9 +313,7 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ✅ NEW: Helper method to extract token from response
   String? _extractToken(Map<String, dynamic> result) {
-    // Try different possible token keys
     final token = result['token'] ?? 
                  result['reset_token'] ?? 
                  result['resetToken'] ?? 
@@ -245,7 +323,6 @@ class AuthProvider with ChangeNotifier {
       return token.toString();
     }
     
-    // If no token found in common keys, check the entire response
     print('🔍 DEBUG - Searching for token in response keys: ${result.keys}');
     
     for (var key in result.keys) {
@@ -258,47 +335,30 @@ class AuthProvider with ChangeNotifier {
     return null;
   }
 
-  // ✅ NEW: Clear reset data
+  Map<String, dynamic> _extractUserData(dynamic userData) {
+    if (userData is Map<String, dynamic>) {
+      return userData;
+    }
+    
+    // Fallback: create basic user data structure
+    return {
+      'student_id': userData?.toString() ?? '',
+      'email': '',
+      'first_name': '',
+      'last_name': '',
+    };
+  }
+
   void _clearResetData() {
     _resetToken = null;
     _resetStudentId = null;
     notifyListeners();
   }
 
-  // Email verification for registration
-  Future<bool> verifyEmail(String email, String code) async {
-    _setLoading(true);
-    _errorMessage = null;
-
-    print('🔐 AUTH PROVIDER - Verifying email for registration');
-    print('📤 Email: $email, Code: $code');
-
-    try {
-      final result = await _authService.verifyEmail(email, code);
-      _setLoading(false);
-
-      print('📥 Verify Email Response: $result');
-
-      if (result['success'] == true) {
-        print('✅ AUTH PROVIDER - Email verification successful');
-        return true;
-      } else {
-        _errorMessage = result['message'] ?? 'Email verification failed';
-        print('❌ AUTH PROVIDER - Email verification failed: $_errorMessage');
-        return false;
-      }
-    } catch (e) {
-      _setLoading(false);
-      _errorMessage = e.toString();
-      print('💥 AUTH PROVIDER - Email verification exception: $e');
-      return false;
-    }
-  }
-
   Future<void> loadUserData() async {
     final userData = await _storageService.getUserData();
     if (userData != null) {
-      _currentUser = User.fromJson(userData);
+      _currentUser = userData;
       notifyListeners();
     }
   }
@@ -306,6 +366,8 @@ class AuthProvider with ChangeNotifier {
   Future<void> logout() async {
     _currentUser = null;
     _clearResetData();
+    _pendingEmail = null;
+    _pendingStudentId = null;
     await _storageService.clearUserData();
     notifyListeners();
   }
@@ -319,7 +381,6 @@ class AuthProvider with ChangeNotifier {
     _clearResetData();
   }
 
-  // Enhanced debug method
   void debugResetToken() {
     print('🔍 DEBUG - Reset Token: $_resetToken');
     print('🔍 DEBUG - Reset Token Type: ${_resetToken?.runtimeType}');
@@ -333,10 +394,26 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ NEW: Validate if reset flow is ready
   bool isResetFlowReady() {
     return _resetToken != null && 
            _resetToken!.isNotEmpty && 
            _resetStudentId != null;
+  }
+
+  // Check if user is logged in
+  bool get isLoggedIn => _currentUser != null && _currentUser!['student_id'] != null;
+
+  // Get user display name
+  String get displayName {
+    if (_currentUser == null) return '';
+    
+    final firstName = _currentUser!['first_name'] ?? _currentUser!['firstName'] ?? '';
+    final lastName = _currentUser!['last_name'] ?? _currentUser!['lastName'] ?? '';
+    
+    if (firstName.isNotEmpty && lastName.isNotEmpty) {
+      return '$firstName $lastName';
+    }
+    
+    return _currentUser!['username'] ?? _currentUser!['email'] ?? '';
   }
 }

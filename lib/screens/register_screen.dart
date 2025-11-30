@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
-import 'verify_email_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);
@@ -438,6 +437,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     try {
       print('🚀 STARTING REGISTRATION PROCESS');
       
+      // Clear previous errors
+      authProvider.clearError();
+
       // Validate dropdowns
       if (_selectedCourse == null || _selectedYearLevel == null || _selectedCollege == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -463,7 +465,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         "college": _selectedCollege!,
         "contact_number": _contactNumberController.text.trim().isEmpty ? null : _contactNumberController.text.trim(),
         "address": _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
-        "student_id": "", // Send empty string
+        "student_id": "",
       };
 
       print('📦 REGISTRATION DATA:');
@@ -473,58 +475,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
       print('   Course: ${data['course']}');
       print('   Year Level: ${data['year_level']}');
       print('   College: ${data['college']}');
-      print('   Full Data: $data');
 
-      final success = await authProvider.register(data);
+      final result = await authProvider.register(data);
       
-      print('🎯 REGISTRATION RESULT: $success');
+      print('🎯 REGISTRATION RESULT: $result');
       
-      if (success && mounted) {
-        print('✅ NAVIGATING TO VERIFICATION SCREEN');
-        Navigator.pushReplacement(
-          context, 
-          MaterialPageRoute(builder: (context) => VerifyEmailScreen(email: _emailController.text.trim()))
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(children: const [
-              Icon(Icons.check_circle_rounded, color: Colors.white), 
-              SizedBox(width: 12), 
-              Expanded(child: Text('Registration successful! Check your email'))
-            ]),
-            backgroundColor: Colors.green[600],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      } else {
-        print('❌ REGISTRATION FAILED: ${authProvider.errorMessage}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(children: [
-                Icon(Icons.error_rounded, color: Colors.white), 
-                SizedBox(width: 12), 
-                Expanded(child: Text('Registration failed: ${authProvider.errorMessage}'))
-              ]),
-              backgroundColor: Colors.red[600],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+      if (!mounted) return;
+
+      // ✅ BAGONG IMPROVED LOGIC - Handle Map response
+      if (result['success'] == true) {
+        if (result['requiresVerification'] == true) {
+          print('⏳ REGISTRATION SUCCESSFUL - VERIFICATION REQUIRED');
+          _navigateToVerification(
+            'Registration successful! Please check your email for verification code.',
+            _emailController.text.trim(),
+            result['studentId'] ?? ''
           );
+        } else {
+          print('✅ REGISTRATION COMPLETE - DIRECT LOGIN SUCCESSFUL');
+          _showSuccessMessage('Registration completed successfully!');
+          // Navigate to login or dashboard
+          Future.delayed(Duration(seconds: 2), () {
+            if (mounted) Navigator.pop(context);
+          });
         }
+      } else {
+        print('❌ REGISTRATION FAILED: ${result['message']}');
+        _showErrorMessage(result['message'] ?? 'Registration failed');
       }
     } catch (e) {
       print('💥 REGISTRATION EXCEPTION: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Registration error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        _showErrorMessage('Registration error: $e');
       }
     }
+  }
+
+  void _navigateToVerification(String message, String email, String studentId) {
+    // TEMPORARY: Navigate back to login for now
+    // You need to create the actual verification screen first
+    Navigator.pop(context);
+    
+    _showSuccessMessage('$message - Please check your email and verify your account.');
+  }
+
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [
+          Icon(Icons.check_circle_rounded, color: Colors.white), 
+          SizedBox(width: 12), 
+          Expanded(child: Text(message))
+        ]),
+        backgroundColor: Colors.green[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [
+          Icon(Icons.error_rounded, color: Colors.white), 
+          SizedBox(width: 12), 
+          Expanded(child: Text(message))
+        ]),
+        backgroundColor: Colors.red[600],
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override

@@ -1,19 +1,18 @@
+// verify_email_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
-import 'reset_password_screen.dart'; 
+import '../providers/auth_provider.dart' as auth_provider;
 
 class VerifyEmailScreen extends StatefulWidget {
+  final String studentId;
   final String email;
-  final String? studentId;
   final bool isPasswordReset;
-  
+
   const VerifyEmailScreen({
-    Key? key, 
+    Key? key,
+    required this.studentId,
     required this.email,
-    this.studentId,
     this.isPasswordReset = false,
-    // ❌ REMOVED: resetToken parameter
   }) : super(key: key);
 
   @override
@@ -21,69 +20,47 @@ class VerifyEmailScreen extends StatefulWidget {
 }
 
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
-  final List<TextEditingController> _codeControllers = List.generate(6, (index) => TextEditingController());
+  final List<TextEditingController> _controllers = List.generate(6, (index) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
   bool _isLoading = false;
-  bool _isResending = false;
 
   @override
   void initState() {
     super.initState();
-    _focusNodes[0].requestFocus();
-    _debugInfo(); // ✅ UPDATED: Debug info
-  }
-
-  // ✅ UPDATED: Debug method
-  void _debugInfo() {
-    print('🔍 VERIFY SCREEN - Debug Info:');
-    print('🔍 Is Password Reset: ${widget.isPasswordReset}');
-    print('🔍 Student ID: ${widget.studentId}');
-    print('🔍 Email: ${widget.email}');
+    // Clear any previous errors when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authProvider = Provider.of<auth_provider.AuthProvider>(context, listen: false);
+      authProvider.clearError();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final authProvider = Provider.of<AuthProvider>(context);
+    final authProvider = Provider.of<auth_provider.AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.05,
-              vertical: size.height * 0.02,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildBackButton(size),
-                SizedBox(height: size.height * 0.03),
-                _buildHeaderContent(size),
-                SizedBox(height: size.height * 0.03),
-                _buildEmailInfo(size),
-                
-                // ✅ ADDED: Provider token status (visible in debug mode)
-                if (widget.isPasswordReset) ...[
-                  SizedBox(height: size.height * 0.01),
-                  _buildTokenStatusInfo(authProvider, size),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: 500,
+                minHeight: size.height - MediaQuery.of(context).padding.top,
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.06,
+                vertical: size.height * 0.03,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildHeader(size),
+                  SizedBox(height: size.height * 0.04),
+                  _buildVerificationCard(authProvider, size),
                 ],
-                
-                SizedBox(height: size.height * 0.04),
-                _buildCodeInputFields(size),
-                
-                // Error Message from AuthProvider
-                if (authProvider.errorMessage != null) ...[
-                  SizedBox(height: size.height * 0.02),
-                  _buildErrorMessage(authProvider.errorMessage!, size),
-                ],
-                
-                SizedBox(height: size.height * 0.04),
-                _buildVerifyButton(authProvider, size),
-                SizedBox(height: size.height * 0.02),
-                _buildResendCode(size),
-              ],
+              ),
             ),
           ),
         ),
@@ -91,156 +68,99 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
   }
 
-  // ✅ UPDATED: Token status info widget
-  Widget _buildTokenStatusInfo(AuthProvider authProvider, Size size) {
-    final hasToken = authProvider.resetToken != null && authProvider.resetToken!.isNotEmpty;
-    
-    return Container(
-      padding: EdgeInsets.all(size.width * 0.03),
-      decoration: BoxDecoration(
-        color: hasToken ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: hasToken ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            hasToken ? Icons.check_circle : Icons.info_outline, 
-            color: hasToken ? Colors.green[600] : Colors.orange[600], 
-            size: size.width * 0.04
-          ),
-          SizedBox(width: size.width * 0.02),
-          Expanded(
-            child: Text(
-              hasToken 
-                ? 'Token ready for password reset' 
-                : 'Token will be generated after verification',
-              style: TextStyle(
-                color: hasToken ? Colors.green[700] : Colors.orange[700],
-                fontSize: size.width * 0.03,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ... keep all your existing UI methods (_buildBackButton, _buildHeaderContent, etc.)
-  // They remain the same as in your original code
-
-  Widget _buildBackButton(Size size) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: () => Navigator.pop(context),
-        icon: Icon(Icons.arrow_back_rounded, color: const Color(0xFF667EEA), size: size.width * 0.06),
-        padding: EdgeInsets.all(size.width * 0.02),
-      ),
-    );
-  }
-
-  Widget _buildHeaderContent(Size size) {
+  Widget _buildHeader(Size size) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: EdgeInsets.all(size.width * 0.04),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
             ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Icon(
-            widget.isPasswordReset ? Icons.vpn_key_rounded : Icons.verified_user_rounded,
-            color: Colors.white,
-            size: size.width * 0.08,
+            child: IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF667EEA)),
+            ),
           ),
         ),
         SizedBox(height: size.height * 0.02),
         Text(
-          widget.isPasswordReset ? 'Reset Your Password' : 'Verify Your Email',
+          'Verify Your Email',
           style: TextStyle(
-            fontSize: size.width * 0.07,
+            fontSize: size.width * 0.075,
             fontWeight: FontWeight.w800,
-            color: Colors.black87,
           ),
         ),
-        SizedBox(height: size.height * 0.01),
+        SizedBox(height: size.height * 0.008),
         Text(
-          widget.isPasswordReset 
-            ? 'Enter the 6-digit verification code to reset your password'
-            : 'We sent a 6-digit verification code to your email address.',
+          'Enter the 6-digit code sent to your email',
+          style: TextStyle(
+            fontSize: size.width * 0.04,
+            color: Colors.grey[600],
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: size.height * 0.008),
+        Text(
+          widget.email,
           style: TextStyle(
             fontSize: size.width * 0.035,
-            color: Colors.grey[600],
-            height: 1.4,
+            color: const Color(0xFF667EEA),
+            fontWeight: FontWeight.bold,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmailInfo(Size size) {
+  Widget _buildVerificationCard(auth_provider.AuthProvider authProvider, Size size) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(size.width * 0.04),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FE),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF667EEA).withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            widget.isPasswordReset && widget.studentId != null 
-              ? 'Student ID: ${widget.studentId}'
-              : 'Verification code sent to:',
-            style: TextStyle(
-              fontSize: size.width * 0.033,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          SizedBox(height: size.height * 0.005),
-          Text(
-            widget.email,
-            style: TextStyle(
-              fontSize: size.width * 0.038,
-              color: const Color(0xFF667EEA),
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
           ),
         ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(size.width * 0.07),
+        child: Column(
+          children: [
+            _buildCodeFields(size),
+            SizedBox(height: size.height * 0.03),
+            
+            if (authProvider.errorMessage != null) ...[
+              _buildErrorMessage(authProvider.errorMessage!, size),
+              SizedBox(height: size.height * 0.02),
+            ],
+            
+            _buildVerifyButton(authProvider, size),
+            SizedBox(height: size.height * 0.02),
+            _buildResendCode(authProvider),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildCodeInputFields(Size size) {
+  Widget _buildCodeFields(Size size) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Enter 6-digit Code *',
-          style: TextStyle(
-            fontSize: size.width * 0.035,
-            color: Colors.grey[700],
-            fontWeight: FontWeight.w600,
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Verification Code',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Colors.black87,
+            ),
           ),
         ),
         SizedBox(height: size.height * 0.015),
@@ -249,37 +169,29 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           children: List.generate(6, (index) {
             return SizedBox(
               width: size.width * 0.12,
-              child: TextField(
-                controller: _codeControllers[index],
+              height: size.width * 0.14,
+              child: TextFormField(
+                controller: _controllers[index],
                 focusNode: _focusNodes[index],
-                keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
+                keyboardType: TextInputType.number,
                 maxLength: 1,
-                style: TextStyle(
-                  fontSize: size.width * 0.05,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF667EEA),
-                ),
                 decoration: InputDecoration(
                   counterText: '',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+                    borderSide: const BorderSide(color: Color(0xFF667EEA)),
                   ),
-                  contentPadding: EdgeInsets.symmetric(vertical: size.height * 0.015),
                 ),
                 onChanged: (value) {
                   if (value.length == 1 && index < 5) {
                     _focusNodes[index + 1].requestFocus();
                   } else if (value.isEmpty && index > 0) {
                     _focusNodes[index - 1].requestFocus();
-                  }
-                  if (_isAllFieldsFilled() && index == 5) {
-                    _verifyCode();
                   }
                 },
               ),
@@ -317,119 +229,62 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     );
   }
 
-  Widget _buildVerifyButton(AuthProvider authProvider, Size size) {
+  Widget _buildVerifyButton(auth_provider.AuthProvider authProvider, Size size) {
     final isLoading = _isLoading || authProvider.isLoading;
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF60B5FF),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF60B5FF).withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: isLoading ? null : _verifyCode,
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: size.height * 0.018),
-            child: isLoading
-                ? Center(
-                    child: SizedBox(
-                      width: size.width * 0.05,
-                      height: size.width * 0.05,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        widget.isPasswordReset ? Icons.lock_reset_rounded : Icons.verified_rounded,
-                        color: Colors.white,
-                        size: size.width * 0.05,
-                      ),
-                      SizedBox(width: size.width * 0.025),
-                      Text(
-                        widget.isPasswordReset ? 'RESET PASSWORD' : 'VERIFY EMAIL',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: size.width * 0.038,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ],
-                  ),
+      height: 50,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : () => _verifyCode(authProvider),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF60B5FF),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
+        child: isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Text(
+                'VERIFY CODE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
 
-  Widget _buildResendCode(Size size) {
+  Widget _buildResendCode(auth_provider.AuthProvider authProvider) {
     return Center(
-      child: Column(
+      child: Wrap(
         children: [
-          Text(
-            "Didn't receive the code?",
-            style: TextStyle(
-              color: Colors.grey[600],
-              fontSize: size.width * 0.033,
+          const Text("Didn't receive the code? "),
+          GestureDetector(
+            onTap: () => _resendCode(authProvider),
+            child: const Text(
+              'Resend',
+              style: TextStyle(color: Color(0xFF667EEA), fontWeight: FontWeight.bold),
             ),
           ),
-          SizedBox(height: size.height * 0.005),
-          _isResending
-              ? SizedBox(
-                  width: size.width * 0.05,
-                  height: size.width * 0.05,
-                  child: const CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667EEA)),
-                  ),
-                )
-              : TextButton(
-                  onPressed: _isResending ? null : _resendCode,
-                  child: Text(
-                    'RESEND CODE',
-                    style: TextStyle(
-                      color: const Color(0xFF667EEA),
-                      fontSize: size.width * 0.035,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
         ],
       ),
     );
   }
 
-  bool _isAllFieldsFilled() {
-    return _codeControllers.every((controller) => controller.text.isNotEmpty);
-  }
-
-  String _getVerificationCode() {
-    return _codeControllers.map((controller) => controller.text).join();
-  }
-
-  // ✅ UPDATED: Verify code method - simplified
-  Future<void> _verifyCode() async {
-    if (!_isAllFieldsFilled()) {
+  Future<void> _verifyCode(auth_provider.AuthProvider authProvider) async {
+    final code = _controllers.map((controller) => controller.text).join();
+    
+    if (code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter the complete 6-digit code'),
           backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -438,163 +293,91 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final code = _getVerificationCode();
-      print('🔐 VERIFY SCREEN - Verifying code: $code');
+      print('🔐 VERIFY EMAIL - Verifying code for Student ID: ${widget.studentId}');
+      print('   Code: $code');
+      print('   Is Password Reset: ${widget.isPasswordReset}');
 
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      bool success;
-
-      if (widget.isPasswordReset) {
-        if (widget.studentId == null) {
-          throw Exception('Student ID is required for password reset');
-        }
-
-        print('📤 PASSWORD RESET - Student ID: ${widget.studentId}, Code: $code');
-        
-        // ✅ FIXED: Call verifyResetCode - this stores the token in AuthProvider
-        success = await authProvider.verifyResetCode(widget.studentId!, code);
-        
-        if (success) {
-          print('✅ Token stored in AuthProvider: ${authProvider.resetToken}');
-        }
-        
-      } else {
-        // Use verifyEmail for registration
-        print('📤 EMAIL REGISTRATION - Email: ${widget.email}, Code: $code');
-        success = await authProvider.verifyEmail(widget.email, code);
-      }
+      final success = await authProvider.verifyEmail(
+        widget.studentId,
+        code,
+        isPasswordReset: widget.isPasswordReset,
+      );
 
       if (success && mounted) {
-        print('✅ VERIFY SCREEN - Verification successful!');
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.isPasswordReset 
-              ? 'Verification successful! Set your new password.' 
-              : 'Email verified successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        
-        _clearAllFields();
-        
-        if (widget.isPasswordReset) {
-          // ✅ FIXED: Use the token from AuthProvider (not passed as parameter)
-          final authProvider = Provider.of<AuthProvider>(context, listen: false);
-          
-          // Validate that we have the token
-          if (!authProvider.isResetFlowReady()) {
-            print('❌ VERIFY SCREEN - Reset flow not ready!');
-            print('🔍 Token: ${authProvider.resetToken}');
-            print('🔍 Student ID: ${authProvider.resetStudentId}');
-            throw Exception('Reset token not available. Please try again.');
-          }
-          
-          print('🎯 Navigating to ResetPasswordScreen');
-          print('🔍 Using token from AuthProvider: ${authProvider.resetToken}');
-          
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ResetPasswordScreen(
-                studentId: widget.studentId!,
-                email: widget.email,
-                // ❌ NO token parameter - ResetPasswordScreen gets it from AuthProvider
-              ),
-            ),
-          );
-        } else {
-          print('🎯 Registration - Navigating to login');
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-      } else {
-        print('❌ VERIFY SCREEN - Verification failed: ${authProvider.errorMessage}');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Verification failed: ${authProvider.errorMessage ?? 'Invalid code'}'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-          _focusNodes[0].requestFocus();
-        }
-      }
-    } catch (e) {
-      print('💥 VERIFY SCREEN - Exception: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
         setState(() => _isLoading = false);
-      }
-    }
-  }
+        print('✅ VERIFY EMAIL - Code verified successfully');
 
-  Future<void> _resendCode() async {
-    setState(() => _isResending = true);
-
-    try {
-      print('🔄 VERIFY SCREEN - Resending code to: ${widget.email}');
-      
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      
-      if (widget.isPasswordReset && widget.studentId != null) {
-        // Resend password reset code
-        await authProvider.requestPasswordReset(widget.studentId!);
-      } else {
-        // TODO: Implement resend email verification code
-        await Future.delayed(const Duration(seconds: 2));
-      }
-
-      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('New verification code sent to your email!'),
+            content: Text('Email verified successfully!'),
             backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
+          ),
+        );
+
+        // Navigate based on whether it's password reset or email verification
+        if (widget.isPasswordReset) {
+          // Navigate to reset password screen
+          Navigator.pushReplacementNamed(context, '/reset-password');
+        } else {
+          // Navigate to complete profile or main app
+          Navigator.pushReplacementNamed(context, '/complete-profile');
+        }
+      } else {
+        setState(() => _isLoading = false);
+        print('❌ VERIFY EMAIL - Code verification failed');
+        
+        // Error message is already set in the provider, so we just need to show the error UI
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      print('❌ VERIFY EMAIL - Exception: $e');
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _resendCode(auth_provider.AuthProvider authProvider) async {
+    try {
+      final success = await authProvider.requestPasswordReset(widget.studentId);
+      
+      if (success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification code resent!'),
+            backgroundColor: Colors.green,
           ),
         );
         
-        // Clear existing code for new entry
-        _clearAllFields();
+        // Clear all code fields
+        for (var controller in _controllers) {
+          controller.clear();
+        }
+        // Focus on first field
         _focusNodes[0].requestFocus();
+        
+        // Clear any errors
+        authProvider.clearError();
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to resend code: ${e.toString()}'),
+            content: Text('Failed to resend code: $e'),
             backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } finally {
-      if (mounted) {
-        setState(() => _isResending = false);
-      }
-    }
-  }
-
-  void _clearAllFields() {
-    for (var controller in _codeControllers) {
-      controller.clear();
     }
   }
 
   @override
   void dispose() {
-    for (var controller in _codeControllers) {
+    for (var controller in _controllers) {
       controller.dispose();
     }
     for (var focusNode in _focusNodes) {

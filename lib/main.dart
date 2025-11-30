@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers/auth_provider.dart'; // <-- your real provider
+import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_screen.dart';
@@ -9,6 +9,7 @@ import 'screens/admin_dashboard.dart';
 import 'screens/verify_email_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -22,16 +23,15 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider<AuthProvider>(
           create: (_) => AuthProvider(),
         ),
-        // You can add more providers here in the future
       ],
       child: MaterialApp(
         title: 'Attendee App',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(primarySwatch: Colors.blue),
-
-        // Initial route handled by AuthWrapper
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
         home: const AuthWrapper(),
-
         routes: {
           '/login': (context) => const LoginScreen(),
           '/register': (context) => const RegisterScreen(),
@@ -39,15 +39,14 @@ class MyApp extends StatelessWidget {
           '/student-dashboard': (context) => const StudentDashboard(),
           '/admin-dashboard': (context) => const AdminDashboard(),
         },
-
         onGenerateRoute: (settings) {
           if (settings.name == '/verify') {
             final args = settings.arguments as Map<String, dynamic>?;
             return MaterialPageRoute(
               builder: (context) => VerifyEmailScreen(
-                email: args?['email'] ?? '',
-                studentId: args?['studentId'],
-                isPasswordReset: args?['isPasswordReset'] ?? false,
+                email: args?['email']?.toString() ?? '',
+                studentId: args?['studentId']?.toString(),
+                isPasswordReset: args?['isPasswordReset'] as bool? ?? false,
               ),
             );
           }
@@ -58,7 +57,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// ----------------- AuthWrapper -----------------
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
@@ -67,24 +65,36 @@ class AuthWrapper extends StatelessWidget {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
 
+    // Show loading indicator while checking auth state
+    if (authProvider.isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     if (currentUser != null) {
-      // If the user is not verified, go to verify email screen
-      if (!currentUser.isVerified) {
+      // Safely access map properties
+      final isVerified = currentUser['isVerified'] as bool? ?? false;
+      final email = currentUser['email'] as String? ?? '';
+      final studentId = currentUser['studentId'] as String?;
+      final role = currentUser['role'] as String? ?? 'student';
+
+      if (!isVerified) {
         return VerifyEmailScreen(
-          email: currentUser.email,
-          studentId: currentUser.studentId,
+          email: email,
+          studentId: studentId,
         );
       }
 
-      // Navigate to dashboard based on role
-      if (currentUser.role == 'student') {
+      if (role == 'student') {
         return const StudentDashboard();
-      } else if (currentUser.role == 'admin') {
+      } else if (role == 'admin') {
         return const AdminDashboard();
       }
     }
 
-    // If no user logged in, show login screen
     return const LoginScreen();
   }
 }
