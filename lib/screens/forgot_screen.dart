@@ -347,16 +347,15 @@ Widget _buildVerifyCodeButton(Size size) {
     setState(() => _isLoading = true);
 
     try {
-      print('🔐 FORGOT PASSWORD - Requesting reset code for Student ID: ${_studentIdController.text.trim()}');
+      print(' FORGOT PASSWORD - Requesting reset code for Student ID: ${_studentIdController.text.trim()}');
       
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final success = await authProvider.requestPasswordReset(_studentIdController.text.trim());
       
-      print('📥 FORGOT PASSWORD - Response success: $success');
+      print(' FORGOT PASSWORD - Response success: $success');
       
       if (success && mounted) {
-        // ✅ FIXED: Use the actual email from backend response
-        // The backend should return the actual user email in the response
+     
         final responseData = authProvider.currentUser; // Or get from response
         setState(() {
           _isLoading = false;
@@ -386,7 +385,7 @@ Widget _buildVerifyCodeButton(Size size) {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      print('💥 FORGOT PASSWORD - Exception: $e');
+      print(' FORGOT PASSWORD - Exception: $e');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
