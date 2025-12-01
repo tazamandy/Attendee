@@ -2,7 +2,6 @@
 import 'package:flutter/foundation.dart';
 import '../services/auth_service.dart';
 import '../services/storage_service.dart';
-import '../config/constants.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -13,16 +12,18 @@ class AuthProvider with ChangeNotifier {
   String? _errorMessage;
   String? _resetToken;
   String? _resetStudentId;
-  String? _pendingEmail; // NEW: Store email for verification flow
-  String? _pendingStudentId; // NEW: Store student ID for verification flow
+  String? _pendingEmail;
+  String? _pendingStudentId;
+  Map<String, dynamic>? _lastLoginData;
 
   Map<String, dynamic>? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get resetToken => _resetToken;
   String? get resetStudentId => _resetStudentId;
-  String? get pendingEmail => _pendingEmail; // NEW: Getter for pending email
-  String? get pendingStudentId => _pendingStudentId; // NEW: Getter for pending student ID
+  String? get pendingEmail => _pendingEmail;
+  String? get pendingStudentId => _pendingStudentId;
+  Map<String, dynamic>? get lastLoginData => _lastLoginData;
 
   // Helper getters for user properties
   String? get userId => _currentUser?['student_id'] ?? _currentUser?['userId'];
@@ -36,6 +37,20 @@ class AuthProvider with ChangeNotifier {
   String? get yearLevel => _currentUser?['year_level']?.toString() ?? _currentUser?['yearLevel']?.toString();
   String? get qrCodeData => _currentUser?['qr_code_data'] ?? _currentUser?['qrCodeData'];
   String? get qrCodeType => _currentUser?['qr_code_type'] ?? _currentUser?['qrCodeType'];
+  
+  // Display name getter
+  String get displayName {
+    if (_currentUser == null) return '';
+    
+    final firstName = _currentUser!['first_name'] ?? _currentUser!['firstName'] ?? '';
+    final lastName = _currentUser!['last_name'] ?? _currentUser!['lastName'] ?? '';
+    
+    if (firstName.isNotEmpty && lastName.isNotEmpty) {
+      return '$firstName $lastName';
+    }
+    
+    return _currentUser!['username'] ?? _currentUser!['email'] ?? '';
+  }
 
   Future<Map<String, dynamic>> register(Map<String, dynamic> userData) async {
     _setLoading(true);
@@ -51,13 +66,10 @@ class AuthProvider with ChangeNotifier {
       _setLoading(false);
 
       print('📥 Auth Provider Response: $result');
-      print('🎯 REGISTRATION RESULT: ${result['success']}');
 
-      // ENHANCED: Check for successful registration that requires verification
       if (result['success'] == true || _isVerificationRequired(result)) {
         print('✅ AUTH PROVIDER - Registration successful, verification required');
         
-        // Store pending registration data for verification flow
         _pendingEmail = userData['email'];
         _pendingStudentId = userData['student_id'];
         
@@ -91,7 +103,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // NEW: Helper method to check if verification is required
   bool _isVerificationRequired(Map<String, dynamic> result) {
     final message = result['message']?.toString().toLowerCase() ?? '';
     return message.contains('check your email') ||
@@ -100,7 +111,6 @@ class AuthProvider with ChangeNotifier {
            message.contains('pending verification');
   }
 
-  // UPDATED: Login method remains the same
   Future<bool> login(String studentId, String password) async {
     _setLoading(true);
     _errorMessage = null;
@@ -115,8 +125,8 @@ class AuthProvider with ChangeNotifier {
 
       if (result['success'] == true && result['user'] != null) {
         _currentUser = _extractUserData(result['user']);
+        _lastLoginData = Map<String, dynamic>.from(_currentUser ?? {});
         
-        // Save user data to storage
         await _storageService.saveUserData(_currentUser!);
         
         print('✅ AUTH PROVIDER - Login successful for: ${_currentUser?['email']}');
@@ -136,7 +146,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // NEW: Method to verify email after registration
   Future<bool> verifyRegistrationEmail(String email, String code) async {
     _setLoading(true);
     _errorMessage = null;
@@ -152,7 +161,6 @@ class AuthProvider with ChangeNotifier {
       if (result['success'] == true) {
         print('✅ AUTH PROVIDER - Registration email verification successful');
         
-        // Clear pending data after successful verification
         _pendingEmail = null;
         _pendingStudentId = null;
         
@@ -170,18 +178,6 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // NEW: Method to clear pending registration
-  void clearPendingRegistration() {
-    _pendingEmail = null;
-    _pendingStudentId = null;
-    _errorMessage = null;
-    notifyListeners();
-  }
-
-  // NEW: Check if there's a pending registration that needs verification
-  bool get hasPendingVerification => _pendingEmail != null && _pendingStudentId != null;
-
-  // Rest of your existing methods remain the same...
   Future<bool> requestPasswordReset(String studentId) async {
     _setLoading(true);
     _errorMessage = null;
@@ -198,9 +194,6 @@ class AuthProvider with ChangeNotifier {
 
       if (result['success'] == true) {
         print('✅ AUTH PROVIDER - Password reset request successful');
-        print('📧 Email: ${result['email']}');
-        print('🎫 Student ID: ${result['student_id']}');
-        
         return true;
       } else {
         _errorMessage = result['message'] ?? 'Failed to request password reset';
@@ -241,8 +234,6 @@ class AuthProvider with ChangeNotifier {
 
         print('✅ AUTH PROVIDER - Reset code verification successful');
         print('🎯 Token: $_resetToken');
-        print('📧 Email: ${result['email']}');
-        print('🎫 Student ID: ${result['student_id']}');
         
         notifyListeners();
         return true;
@@ -340,7 +331,6 @@ class AuthProvider with ChangeNotifier {
       return userData;
     }
     
-    // Fallback: create basic user data structure
     return {
       'student_id': userData?.toString() ?? '',
       'email': '',
@@ -359,12 +349,14 @@ class AuthProvider with ChangeNotifier {
     final userData = await _storageService.getUserData();
     if (userData != null) {
       _currentUser = userData;
+      _lastLoginData = Map<String, dynamic>.from(userData);
       notifyListeners();
     }
   }
 
   Future<void> logout() async {
     _currentUser = null;
+    _lastLoginData = null;
     _clearResetData();
     _pendingEmail = null;
     _pendingStudentId = null;
@@ -381,12 +373,19 @@ class AuthProvider with ChangeNotifier {
     _clearResetData();
   }
 
-  void debugResetToken() {
-    print('🔍 DEBUG - Reset Token: $_resetToken');
-    print('🔍 DEBUG - Reset Token Type: ${_resetToken?.runtimeType}');
-    print('🔍 DEBUG - Reset Token Length: ${_resetToken?.length}');
-    print('🔍 DEBUG - Reset Student ID: $_resetStudentId');
-    print('🔍 DEBUG - Has Token: ${_resetToken != null && _resetToken!.isNotEmpty}');
+  void clearPendingRegistration() {
+    _pendingEmail = null;
+    _pendingStudentId = null;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  bool get hasPendingVerification => _pendingEmail != null && _pendingStudentId != null;
+  bool get isLoggedIn => _currentUser != null && _currentUser!['student_id'] != null;
+  bool isResetFlowReady() {
+    return _resetToken != null && 
+           _resetToken!.isNotEmpty && 
+           _resetStudentId != null;
   }
 
   void _setLoading(bool loading) {
@@ -394,26 +393,26 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  bool isResetFlowReady() {
-    return _resetToken != null && 
-           _resetToken!.isNotEmpty && 
-           _resetStudentId != null;
+  void updateLastLoginData(Map<String, dynamic> data) {
+    _lastLoginData = Map<String, dynamic>.from(data);
+    notifyListeners();
   }
 
-  // Check if user is logged in
-  bool get isLoggedIn => _currentUser != null && _currentUser!['student_id'] != null;
+  // NEW: Request email verification
+  Future<bool> requestEmailVerification(String email) async {
+    _setLoading(true);
+    _errorMessage = null;
 
-  // Get user display name
-  String get displayName {
-    if (_currentUser == null) return '';
-    
-    final firstName = _currentUser!['first_name'] ?? _currentUser!['firstName'] ?? '';
-    final lastName = _currentUser!['last_name'] ?? _currentUser!['lastName'] ?? '';
-    
-    if (firstName.isNotEmpty && lastName.isNotEmpty) {
-      return '$firstName $lastName';
+    try {
+      // This would call your backend API to resend verification email
+      // For now, we'll simulate success
+      await Future.delayed(const Duration(seconds: 1));
+      _setLoading(false);
+      return true;
+    } catch (e) {
+      _setLoading(false);
+      _errorMessage = e.toString();
+      return false;
     }
-    
-    return _currentUser!['username'] ?? _currentUser!['email'] ?? '';
   }
 }

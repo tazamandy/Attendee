@@ -18,23 +18,29 @@ class StudentDashboard extends StatelessWidget {
     final studentId = _getStudentId(user, authProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FBFF),
+      backgroundColor: const Color(0xFFF5F5F7),
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: CustomScrollView(
           physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(context, authProvider, user),
-                const SizedBox(height: 32),
-                _buildProfileOverview(user, studentId),
-                const SizedBox(height: 24),
-                _buildQuickActionsSection(context, user, studentId),
-              ],
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context, authProvider, user),
+                    const SizedBox(height: 24),
+                    _buildProfileCard(user, studentId),
+                    const SizedBox(height: 20),
+                    _buildStatsRow(user),
+                    const SizedBox(height: 24),
+                    _buildQuickActionsSection(context, user, studentId),
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -66,58 +72,64 @@ class StudentDashboard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome back,',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Good day',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              user?.username ?? 'User',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1D1F),
+              const SizedBox(height: 4),
+              Text(
+                user?.username ?? 'User',
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1D1D1F),
+                  height: 1.2,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            border: Border.all(
-              color: Colors.grey[200]!,
-            ),
+            color: const Color(0xFF1D1D1F),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               onTap: () {
                 _logoutAndGoToLogin(context, authProvider);
               },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                child: const Text(
-                  'Logout',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w600,
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(
+                      Icons.power_settings_new_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Logout',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -127,50 +139,40 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileOverview(dynamic user, String studentId) {
+  Widget _buildProfileCard(dynamic user, String studentId) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF60B5FF), Color(0xFF3A8DFF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF007AFF),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF60B5FF).withOpacity(0.3),
+            color: const Color(0xFF007AFF).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
-                    user?.username?[0] ?? 'U',
+                    user?.username?[0].toUpperCase() ?? 'U',
                     style: const TextStyle(
-                      fontSize: 24,
+                      fontSize: 32,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF60B5FF),
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -187,31 +189,17 @@ class StudentDashboard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 4),
                     Text(
                       user?.course ?? 'No Course',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withOpacity(0.85),
                         fontWeight: FontWeight.w500,
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'Year ${user?.yearLevel ?? 'N/A'} • ID: $studentId',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -220,20 +208,30 @@ class StudentDashboard extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-              ),
+              color: Colors.white.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildInfoColumn('User ID', studentId),
-                _buildInfoColumn('Year Level', 'Year ${user?.yearLevel ?? 'N/A'}'),
-                _buildInfoColumn('Username', user?.username ?? 'N/A'),
+                const Icon(
+                  Icons.badge_outlined,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'ID: $studentId',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
           ),
@@ -242,28 +240,75 @@ class StudentDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoColumn(String title, String value) {
-    return Expanded(
+  Widget _buildStatsRow(dynamic user) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            'Year Level',
+            'Year ${user?.yearLevel ?? 'N/A'}',
+            Icons.school_rounded,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildStatCard(
+            'Attendance',
+            '95.5%',
+            Icons.check_circle_rounded,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF007AFF).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF007AFF),
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(
-            title,
+            label,
             style: TextStyle(
               fontSize: 12,
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+              fontSize: 18,
+              color: Color(0xFF1D1D1F),
+              fontWeight: FontWeight.w700,
             ),
-            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -279,94 +324,113 @@ class StudentDashboard extends StatelessWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF1A1D1F),
+            color: Color(0xFF1D1D1F),
           ),
         ),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.2,
-          children: [
-            _buildActionCard(
-              'QR Code',
-              () {
-                QRCodeDialog.show(
-                  context,
-                  user: user,
-                  studentId: studentId,
-                );
-              },
-            ),
-            _buildActionCard(
-              'Attendance',
-              () {},
-            ),
-            _buildActionCard(
-              'Schedule',
-              () {},
-            ),
-            _buildActionCard(
-              'Profile',
-              () {},
-            ),
-          ],
-        ),
+        _buildActionRow([
+          ActionData(
+            title: 'QR Code', 
+            icon: Icons.qr_code_2_rounded, 
+            color: const Color(0xFF007AFF), 
+            onTap: () {
+              QRCodeDialog.show(context, user: user, studentId: studentId);
+            }
+          ),
+          ActionData(
+            title: 'Attendance', 
+            icon: Icons.calendar_today_rounded, 
+            color: const Color(0xFF34C759), 
+            onTap: () {}
+          ),
+        ]),
+        const SizedBox(height: 12),
+        _buildActionRow([
+          ActionData(
+            title: 'Schedule', 
+            icon: Icons.schedule_rounded, 
+            color: const Color(0xFFFF9500), 
+            onTap: () {}
+          ),
+          ActionData(
+            title: 'Profile', 
+            icon: Icons.person_rounded, 
+            color: const Color(0xFFFF2D55), 
+            onTap: () {}
+          ),
+        ]),
       ],
     );
   }
 
-  Widget _buildActionCard(
-    String title,
-    VoidCallback onTap,
-  ) {
+  Widget _buildActionRow(List<ActionData> actions) {
+    return Row(
+      children: actions.map((action) {
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: action == actions.last ? 0 : 12,
+            ),
+            child: _buildActionCard(
+              action.title,
+              action.icon,
+              action.color,
+              action.onTap,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback? onTap) {
     return Container(
+      height: 110,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(
-          color: Colors.grey[100]!,
-        ),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF60B5FF).withOpacity(0.1),
+                    color: color.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    '📱',
-                    style: TextStyle(fontSize: 20),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1D1F),
+                    color: Color(0xFF1D1D1F),
                   ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),
@@ -381,51 +445,66 @@ class StudentDashboard extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return Dialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF3B30).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Icon(
+                    Icons.power_settings_new_rounded,
+                    color: Color(0xFFFF3B30),
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
                 const Text(
                   'Logout',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1D1F),
+                    color: Color(0xFF1D1D1F),
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Are you sure you want to logout?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.grey,
+                    color: Colors.grey[600],
+                    fontSize: 15,
                   ),
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
+                      child: TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
                         },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: Colors.grey[100],
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                          side: BorderSide(color: Colors.grey[300]!),
                         ),
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: Color(0xFF1D1D1F),
                             fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -442,7 +521,7 @@ class StudentDashboard extends StatelessWidget {
                             builder: (BuildContext context) {
                               return const Center(
                                 child: CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF60B5FF)),
+                                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF007AFF)),
                                 ),
                               );
                             },
@@ -456,11 +535,11 @@ class StudentDashboard extends StatelessWidget {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF60B5FF),
+                          backgroundColor: const Color(0xFFFF3B30),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           elevation: 0,
                         ),
@@ -468,6 +547,7 @@ class StudentDashboard extends StatelessWidget {
                           'Logout',
                           style: TextStyle(
                             fontWeight: FontWeight.w600,
+                            fontSize: 15,
                           ),
                         ),
                       ),
@@ -481,7 +561,19 @@ class StudentDashboard extends StatelessWidget {
       },
     );
   }
+}
 
-  // Remove the duplicate _showQRCodeDialog method since you're using QRCodeDialog.show
-  // Remove the _generateQRData method since it's likely handled in QRCodeDialog
+// FIXED: Added ActionData class outside the StudentDashboard class
+class ActionData {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const ActionData({
+    required this.title,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
 }

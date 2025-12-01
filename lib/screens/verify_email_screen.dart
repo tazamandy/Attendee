@@ -1,7 +1,7 @@
-// verify_email_screen.dart
+// screens/verify_email_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart' as auth_provider;
+import '../providers/auth_provider.dart' as auth_provider; // FIXED: Added alias
 
 class VerifyEmailScreen extends StatefulWidget {
   final String studentId;
@@ -86,7 +86,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         ),
         SizedBox(height: size.height * 0.02),
         Text(
-          'Verify Your Email',
+          widget.isPasswordReset ? 'Verify Your Identity' : 'Verify Your Email',
           style: TextStyle(
             fontSize: size.width * 0.075,
             fontWeight: FontWeight.w800,
@@ -94,7 +94,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         ),
         SizedBox(height: size.height * 0.008),
         Text(
-          'Enter the 6-digit code sent to your email',
+          widget.isPasswordReset 
+              ? 'Enter the 6-digit code to reset your password'
+              : 'Enter the 6-digit code sent to your email',
           style: TextStyle(
             fontSize: size.width * 0.04,
             color: Colors.grey[600],
@@ -297,11 +299,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       print('   Code: $code');
       print('   Is Password Reset: ${widget.isPasswordReset}');
 
-      final success = await authProvider.verifyEmail(
-        widget.studentId,
-        code,
-        isPasswordReset: widget.isPasswordReset,
-      );
+      // FIXED: Use the correct method name based on whether it's password reset or email verification
+      final success = widget.isPasswordReset
+          ? await authProvider.verifyResetCode(widget.studentId, code)
+          : await authProvider.verifyRegistrationEmail(widget.email, code);
 
       if (success && mounted) {
         setState(() => _isLoading = false);
@@ -309,7 +310,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Email verified successfully!'),
+            content: Text('Verification successful!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -320,13 +321,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           Navigator.pushReplacementNamed(context, '/reset-password');
         } else {
           // Navigate to complete profile or main app
-          Navigator.pushReplacementNamed(context, '/complete-profile');
+          Navigator.pushReplacementNamed(context, '/student-dashboard');
         }
       } else {
         setState(() => _isLoading = false);
         print('❌ VERIFY EMAIL - Code verification failed');
-        
-        // Error message is already set in the provider, so we just need to show the error UI
       }
     } catch (e) {
       setState(() => _isLoading = false);
@@ -343,7 +342,9 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
 
   Future<void> _resendCode(auth_provider.AuthProvider authProvider) async {
     try {
-      final success = await authProvider.requestPasswordReset(widget.studentId);
+      final success = widget.isPasswordReset
+          ? await authProvider.requestPasswordReset(widget.studentId)
+          : await authProvider.requestEmailVerification(widget.email);
       
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,7 +1,8 @@
+// lib/screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'screens/my_qr_code_screen.dart';
+import 'qr_code_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -44,7 +45,7 @@ class ProfileScreen extends StatelessWidget {
                         ? () {
                             Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => const MyQRCodeScreen(),
+                                builder: (_) => const QrCodeScreen(),
                               ),
                             );
                           }
@@ -79,9 +80,17 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return '?';
     
     try {
-      final dynamicUser = user as dynamic;
-      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
-      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      String firstName = '';
+      String lastName = '';
+      
+      if (user is Map<String, dynamic>) {
+        firstName = user['firstName'] ?? user['first_name'] ?? '';
+        lastName = user['lastName'] ?? user['last_name'] ?? '';
+      } else {
+        final dynamicUser = user as dynamic;
+        firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+        lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      }
       
       if (firstName.isNotEmpty && lastName.isNotEmpty) {
         return '${firstName[0]}${lastName[0]}';
@@ -91,8 +100,7 @@ class ProfileScreen extends StatelessWidget {
         return lastName[0];
       }
       
-      // Fallback to username
-      final username = dynamicUser.username ?? '';
+      final username = _getUsername(user);
       if (username.isNotEmpty) {
         return username[0];
       }
@@ -107,16 +115,23 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return 'Unknown User';
     
     try {
-      final dynamicUser = user as dynamic;
-      final firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
-      final lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      String firstName = '';
+      String lastName = '';
+      
+      if (user is Map<String, dynamic>) {
+        firstName = user['firstName'] ?? user['first_name'] ?? '';
+        lastName = user['lastName'] ?? user['last_name'] ?? '';
+      } else {
+        final dynamicUser = user as dynamic;
+        firstName = dynamicUser.firstName ?? dynamicUser.first_name ?? '';
+        lastName = dynamicUser.lastName ?? dynamicUser.last_name ?? '';
+      }
       
       if (firstName.isNotEmpty || lastName.isNotEmpty) {
         return '$firstName $lastName'.trim();
       }
       
-      // Fallback to username
-      return dynamicUser.username ?? 'Unknown User';
+      return _getUsername(user);
     } catch (e) {
       return 'Unknown User';
     }
@@ -126,8 +141,27 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return '';
     
     try {
+      if (user is Map<String, dynamic>) {
+        return user['email'] ?? '';
+      }
+      
       final dynamicUser = user as dynamic;
       return dynamicUser.email ?? '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _getUsername(dynamic user) {
+    if (user == null) return '';
+    
+    try {
+      if (user is Map<String, dynamic>) {
+        return user['username'] ?? '';
+      }
+      
+      final dynamicUser = user as dynamic;
+      return dynamicUser.username ?? '';
     } catch (e) {
       return '';
     }
@@ -137,8 +171,15 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return false;
     
     try {
-      final dynamicUser = user as dynamic;
-      final qrCodeData = dynamicUser.qrCodeData;
+      String? qrCodeData;
+      
+      if (user is Map<String, dynamic>) {
+        qrCodeData = user['qrCodeData'] ?? user['qr_code_data'];
+      } else {
+        final dynamicUser = user as dynamic;
+        qrCodeData = dynamicUser.qrCodeData ?? dynamicUser.qr_code_data;
+      }
+      
       return qrCodeData != null && qrCodeData.toString().isNotEmpty;
     } catch (e) {
       return false;
@@ -167,6 +208,14 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return '';
     
     try {
+      if (user is Map<String, dynamic>) {
+        return user['student_id']?.toString() ?? 
+               user['studentId']?.toString() ?? 
+               user['id']?.toString() ?? 
+               user['userId']?.toString() ??
+               '';
+      }
+      
       final dynamicUser = user as dynamic;
       return dynamicUser.student_id?.toString() ?? 
              dynamicUser.studentId?.toString() ?? 
@@ -178,23 +227,16 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  String _getUsername(dynamic user) {
-    if (user == null) return '';
-    
-    try {
-      final dynamicUser = user as dynamic;
-      return dynamicUser.username ?? '';
-    } catch (e) {
-      return '';
-    }
-  }
-
   String _getCourse(dynamic user) {
     if (user == null) return '';
     
     try {
+      if (user is Map<String, dynamic>) {
+        return user['course']?.toString() ?? '';
+      }
+      
       final dynamicUser = user as dynamic;
-      return dynamicUser.course ?? '';
+      return dynamicUser.course?.toString() ?? '';
     } catch (e) {
       return '';
     }
@@ -204,8 +246,15 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return '';
     
     try {
-      final dynamicUser = user as dynamic;
-      final yearLevel = dynamicUser.yearLevel ?? dynamicUser.year_level;
+      String? yearLevel;
+      
+      if (user is Map<String, dynamic>) {
+        yearLevel = user['yearLevel'] ?? user['year_level'];
+      } else {
+        final dynamicUser = user as dynamic;
+        yearLevel = dynamicUser.yearLevel ?? dynamicUser.year_level;
+      }
+      
       return yearLevel?.toString() ?? '';
     } catch (e) {
       return '';
@@ -216,6 +265,10 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return '';
     
     try {
+      if (user is Map<String, dynamic>) {
+        return user['role'] ?? 'Student';
+      }
+      
       final dynamicUser = user as dynamic;
       return dynamicUser.role ?? 'Student';
     } catch (e) {
@@ -255,7 +308,6 @@ class ProfileScreen extends StatelessWidget {
             if (!isVerified)
               TextButton(
                 onPressed: () {
-                  // Implement resend verification
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Verification email sent!')),
                   );
@@ -272,6 +324,12 @@ class ProfileScreen extends StatelessWidget {
     if (user == null) return false;
     
     try {
+      if (user is Map<String, dynamic>) {
+        return user['isVerified'] == true || 
+               user['is_verified'] == true ||
+               user['verified'] == true;
+      }
+      
       final dynamicUser = user as dynamic;
       return dynamicUser.isVerified == true || 
              dynamicUser.is_verified == true ||

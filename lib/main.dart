@@ -7,6 +7,7 @@ import 'screens/forgot_screen.dart';
 import 'screens/student_dashboard.dart';
 import 'screens/admin_dashboard.dart';
 import 'screens/verify_email_screen.dart';
+import 'screens/superadmin/superadmin_dashboard.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,63 +39,93 @@ class MyApp extends StatelessWidget {
           '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/student-dashboard': (context) => const StudentDashboard(),
           '/admin-dashboard': (context) => const AdminDashboard(),
-        },
-        onGenerateRoute: (settings) {
-          if (settings.name == '/verify') {
-            final args = settings.arguments as Map<String, dynamic>?;
-            return MaterialPageRoute(
-              builder: (context) => VerifyEmailScreen(
-                email: args?['email']?.toString() ?? '',
-                studentId: args?['studentId']?.toString(),
-                isPasswordReset: args?['isPasswordReset'] as bool? ?? false,
-              ),
+          '/superadmin-dashboard': (context) => const SuperAdminDashboard(), // NEW
+          '/verify-email': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+            return VerifyEmailScreen(
+              email: args?['email']?.toString() ?? '',
+              studentId: args?['studentId']?.toString() ?? '',
+              isPasswordReset: args?['isPasswordReset'] as bool? ?? false,
             );
-          }
-          return null;
+          },
         },
       ),
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
+class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  bool _isInitializing = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAuth();
+  }
+
+  Future<void> _initializeAuth() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.loadUserData();
+    setState(() {
+      _isInitializing = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
     final currentUser = authProvider.currentUser;
 
-    // Show loading indicator while checking auth state
-    if (authProvider.isLoading) {
+    if (_isInitializing || authProvider.isLoading) {
       return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
     if (currentUser != null) {
-      // Safely access map properties
-      final isVerified = currentUser['isVerified'] as bool? ?? false;
+      final isVerified = currentUser['is_verified'] as bool? ?? 
+                        currentUser['isVerified'] as bool? ?? 
+                        currentUser['verified'] as bool? ?? 
+                        false;
       final email = currentUser['email'] as String? ?? '';
-      final studentId = currentUser['studentId'] as String?;
+      final studentId = currentUser['student_id'] as String? ?? 
+                       currentUser['studentId'] as String? ?? 
+                       '';
       final role = currentUser['role'] as String? ?? 'student';
+
+      print('🔐 AUTH WRAPPER - User logged in:');
+      print('   Role: $role');
+      print('   Verified: $isVerified');
 
       if (!isVerified) {
         return VerifyEmailScreen(
           email: email,
           studentId: studentId,
+          isPasswordReset: false,
         );
       }
 
-      if (role == 'student') {
-        return const StudentDashboard();
+      // ENHANCED: Route based on role
+      if (role == 'superadmin') {
+        print('👑 AUTH WRAPPER - Redirecting to superadmin dashboard');
+        return const SuperAdminDashboard();
       } else if (role == 'admin') {
+        print('👨‍💼 AUTH WRAPPER - Redirecting to admin dashboard');
         return const AdminDashboard();
+      } else {
+        print('🎓 AUTH WRAPPER - Redirecting to student dashboard');
+        return const StudentDashboard();
       }
     }
 
+    print('🔐 AUTH WRAPPER - No user logged in, redirecting to login');
     return const LoginScreen();
   }
 }
